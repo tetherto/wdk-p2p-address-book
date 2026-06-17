@@ -1,0 +1,52 @@
+{
+  "name": "@tetherto/wdk-p2p-address-book",
+  "version": "1.0.0-beta.1",
+  "main": "index.js",
+  "types": "./types/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "bare": "./bare.js",
+      "default": "./index.js"
+    },
+    "./package": {
+      "default": "./package.json"
+    }
+  },
+  "scripts": {
+    "brittle": "brittle test.js",
+    "lint": "prettier . --check",
+    "format": "prettier . --write",
+    "test:bare": "bare tests/bare-runtime.test.mjs",
+    "test:p2p": "brittle tests/p2p.test.js",
+    "test": "npm run lint && npm run brittle && npm run test:p2p && npm run test:bare"
+  },
+  "license": "Apache-2.0",
+  "description": "Distributed address book built on autobase",
+  "devDependencies": {
+    "bare": "^1.28.7",
+    "blind-peer": "^3.10.0",
+    "brittle": "^3.19.0",
+    "hyperdht": "^6.23.0",
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^2.0.0",
+    "test-tmp": "^1.4.0"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "autobase": "^7.19.4",
+    "b4a": "^1.7.1",
+    "bare-node-runtime": "^1.4.0",
+    "blind-peering": "^1.13.0",
+    "corestore": "^7.4.7",
+    "hypercore": "^11.16.2",
+    "hypercore-crypto": "^3.4.2",
+    "hypercore-id-encoding": "^1.3.0",
+    "hyperdb": "^4.16.1",
+    "hyperdispatch": "^1.4.2",
+    "hyperschema": "^1.15.0",
+    "hyperswarm": "^4.14.0",
+    "ready-resource": "^1.2.0"
+  }
+}

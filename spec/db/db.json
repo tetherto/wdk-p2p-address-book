@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "offset": 0,
+  "schema": [
+    {
+      "name": "contacts",
+      "namespace": "addressbook",
+      "id": 0,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@addressbook/contact",
+      "derived": false,
+      "key": ["id"],
+      "trigger": null
+    },
+    {
+      "name": "addresses",
+      "namespace": "addressbook",
+      "id": 1,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": ["@addressbook/addresses-by-contact"],
+      "schema": "@addressbook/address",
+      "derived": false,
+      "key": ["id"],
+      "trigger": null
+    },
+    {
+      "name": "addresses-by-contact",
+      "namespace": "addressbook",
+      "id": 2,
+      "type": 2,
+      "version": 1,
+      "collection": "@addressbook/addresses",
+      "unique": false,
+      "deprecated": false,
+      "key": ["contactId"]
+    },
+    {
+      "name": "writer",
+      "namespace": "addressbook",
+      "id": 3,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@addressbook/writer",
+      "derived": false,
+      "key": ["key"],
+      "trigger": null
+    },
+    {
+      "name": "mirrors",
+      "namespace": "addressbook",
+      "id": 4,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@addressbook/mirror",
+      "derived": false,
+      "key": ["key"],
+      "trigger": null
+    }
+  ]
+}
