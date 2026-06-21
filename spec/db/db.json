@@ -4,65 +4,77 @@
   "schema": [
     {
       "name": "contacts",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "id": 0,
       "type": 1,
       "version": 1,
       "versionField": null,
       "indexes": [],
-      "schema": "@addressbook/contact",
+      "schema": "@wdk-addressbook/contact",
       "derived": false,
-      "key": ["id"],
+      "key": [
+        "id"
+      ],
       "trigger": null
     },
     {
       "name": "addresses",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "id": 1,
       "type": 1,
       "version": 1,
       "versionField": null,
-      "indexes": ["@addressbook/addresses-by-contact"],
-      "schema": "@addressbook/address",
+      "indexes": [
+        "@wdk-addressbook/addresses-by-contact"
+      ],
+      "schema": "@wdk-addressbook/address",
       "derived": false,
-      "key": ["id"],
+      "key": [
+        "id"
+      ],
       "trigger": null
     },
     {
       "name": "addresses-by-contact",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "id": 2,
       "type": 2,
       "version": 1,
-      "collection": "@addressbook/addresses",
+      "collection": "@wdk-addressbook/addresses",
       "unique": false,
       "deprecated": false,
-      "key": ["contactId"]
+      "key": [
+        "contactId"
+      ]
     },
     {
       "name": "writer",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "id": 3,
       "type": 1,
       "version": 1,
       "versionField": null,
       "indexes": [],
-      "schema": "@addressbook/writer",
+      "schema": "@wdk-addressbook/writer",
       "derived": false,
-      "key": ["key"],
+      "key": [
+        "key"
+      ],
       "trigger": null
     },
     {
       "name": "mirrors",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "id": 4,
       "type": 1,
       "version": 1,
       "versionField": null,
       "indexes": [],
-      "schema": "@addressbook/mirror",
+      "schema": "@wdk-addressbook/mirror",
       "derived": false,
-      "key": ["key"],
+      "key": [
+        "key"
+      ],
       "trigger": null
     }
   ]

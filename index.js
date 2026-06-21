@@ -48,22 +48,22 @@ class AddressBook extends ReadyResource {
     this.mirrors = (opts.mirrors || []).map(decodeMirrorKey)
     this._updatingPeering = null
 
-    this.router.add('@addressbook/put-contact', async (data, context) => {
-      await context.view.insert('@addressbook/contacts', data)
+    this.router.add('@wdk-addressbook/put-contact', async (data, context) => {
+      await context.view.insert('@wdk-addressbook/contacts', data)
     })
 
-    this.router.add('@addressbook/del-contact', async (data, context) => {
-      await context.view.delete('@addressbook/contacts', data)
+    this.router.add('@wdk-addressbook/del-contact', async (data, context) => {
+      await context.view.delete('@wdk-addressbook/contacts', data)
       const addresses = await context.view
-        .find('@addressbook/addresses', { contactId: data.id })
+        .find('@wdk-addressbook/addresses', { contactId: data.id })
         .toArray()
       for (const addr of addresses) {
-        await context.view.delete('@addressbook/addresses', { id: addr.id })
+        await context.view.delete('@wdk-addressbook/addresses', { id: addr.id })
       }
     })
 
-    this.router.add('@addressbook/put-address', async (data, context) => {
-      const existing = await context.view.find('@addressbook/addresses', {}).toArray()
+    this.router.add('@wdk-addressbook/put-address', async (data, context) => {
+      const existing = await context.view.find('@wdk-addressbook/addresses', {}).toArray()
 
       const networkTaken = existing.some(
         (a) => a.id !== data.id && a.address === data.address && a.network === data.network
@@ -77,29 +77,29 @@ class AddressBook extends ReadyResource {
         if (umaTaken) return
       }
 
-      await context.view.insert('@addressbook/addresses', data)
+      await context.view.insert('@wdk-addressbook/addresses', data)
     })
 
-    this.router.add('@addressbook/del-address', async (data, context) => {
-      await context.view.delete('@addressbook/addresses', data)
+    this.router.add('@wdk-addressbook/del-address', async (data, context) => {
+      await context.view.delete('@wdk-addressbook/addresses', data)
     })
 
-    this.router.add('@addressbook/add-writer', async (data, context) => {
-      await context.view.insert('@addressbook/writer', data)
+    this.router.add('@wdk-addressbook/add-writer', async (data, context) => {
+      await context.view.insert('@wdk-addressbook/writer', data)
       await context.base.addWriter(data.key, { indexer: true })
     })
 
-    this.router.add('@addressbook/remove-writer', async (data, context) => {
-      await context.view.delete('@addressbook/writer', data)
+    this.router.add('@wdk-addressbook/remove-writer', async (data, context) => {
+      await context.view.delete('@wdk-addressbook/writer', data)
       await context.base.removeWriter(data.key)
     })
 
-    this.router.add('@addressbook/add-mirror', async (data, context) => {
-      await context.view.insert('@addressbook/mirrors', data)
+    this.router.add('@wdk-addressbook/add-mirror', async (data, context) => {
+      await context.view.insert('@wdk-addressbook/mirrors', data)
     })
 
-    this.router.add('@addressbook/del-mirror', async (data, context) => {
-      await context.view.delete('@addressbook/mirrors', { key: data.key })
+    this.router.add('@wdk-addressbook/del-mirror', async (data, context) => {
+      await context.view.delete('@wdk-addressbook/mirrors', { key: data.key })
     })
 
     this._boot(opts)
@@ -302,13 +302,13 @@ class AddressBook extends ReadyResource {
     const now = Date.now()
     const id = generateId()
     const record = { id, name: normalizeContactName(name), createdAt: now, updatedAt: now }
-    await this.base.append(encode('@addressbook/put-contact', record))
+    await this.base.append(encode('@wdk-addressbook/put-contact', record))
     return record
   }
 
   async editContact (id, updates) {
     if (this.opened === false) await this.ready()
-    const existing = await this.base.view.get('@addressbook/contacts', { id })
+    const existing = await this.base.view.get('@wdk-addressbook/contacts', { id })
     if (!existing) throw new Error('Contact not found: ' + id)
     const record = {
       id: existing.id,
@@ -316,23 +316,23 @@ class AddressBook extends ReadyResource {
       createdAt: existing.createdAt,
       updatedAt: Date.now()
     }
-    await this.base.append(encode('@addressbook/put-contact', record))
+    await this.base.append(encode('@wdk-addressbook/put-contact', record))
     return record
   }
 
   async deleteContact (id) {
     if (this.opened === false) await this.ready()
-    await this.base.append(encode('@addressbook/del-contact', { id }))
+    await this.base.append(encode('@wdk-addressbook/del-contact', { id }))
   }
 
   async getContact (id) {
     if (this.opened === false) await this.ready()
-    return this.base.view.get('@addressbook/contacts', { id })
+    return this.base.view.get('@wdk-addressbook/contacts', { id })
   }
 
   async listContacts () {
     if (this.opened === false) await this.ready()
-    const results = await this.base.view.find('@addressbook/contacts', {}).toArray()
+    const results = await this.base.view.find('@wdk-addressbook/contacts', {}).toArray()
     return results.sort((a, b) => a.name.localeCompare(b.name))
   }
 
@@ -342,7 +342,7 @@ class AddressBook extends ReadyResource {
     if (this.opened === false) await this.ready()
     const normalized = normalizeAddressInput(input)
 
-    const contact = await this.base.view.get('@addressbook/contacts', {
+    const contact = await this.base.view.get('@wdk-addressbook/contacts', {
       id: contactId
     })
     if (!contact) throw new Error('Contact not found: ' + contactId)
@@ -360,13 +360,13 @@ class AddressBook extends ReadyResource {
       updatedAt: now
     }
     await this._validateAddressRecord(record)
-    await this.base.append(encode('@addressbook/put-address', record))
+    await this.base.append(encode('@wdk-addressbook/put-address', record))
     return record
   }
 
   async editAddress (id, updates) {
     if (this.opened === false) await this.ready()
-    const existing = await this.base.view.get('@addressbook/addresses', { id })
+    const existing = await this.base.view.get('@wdk-addressbook/addresses', { id })
     if (!existing) throw new Error('Address not found: ' + id)
     const normalized = normalizeAddressInput(updates, { partial: true })
 
@@ -381,21 +381,21 @@ class AddressBook extends ReadyResource {
       updatedAt: Date.now()
     }
     await this._validateAddressRecord(record, { excludeId: id })
-    await this.base.append(encode('@addressbook/put-address', record))
+    await this.base.append(encode('@wdk-addressbook/put-address', record))
     return record
   }
 
   async deleteAddress (id) {
     if (this.opened === false) await this.ready()
-    await this.base.append(encode('@addressbook/del-address', { id }))
+    await this.base.append(encode('@wdk-addressbook/del-address', { id }))
   }
 
   async listAddresses (contactId) {
     if (this.opened === false) await this.ready()
     if (contactId) {
-      return this.base.view.find('@addressbook/addresses', { contactId }).toArray()
+      return this.base.view.find('@wdk-addressbook/addresses', { contactId }).toArray()
     }
-    return this.base.view.find('@addressbook/addresses', {}).toArray()
+    return this.base.view.find('@wdk-addressbook/addresses', {}).toArray()
   }
 
   // Search
@@ -404,8 +404,8 @@ class AddressBook extends ReadyResource {
     if (this.opened === false) await this.ready()
     const q = query.toLowerCase()
 
-    const contacts = await this.base.view.find('@addressbook/contacts', {}).toArray()
-    const addresses = await this.base.view.find('@addressbook/addresses', {}).toArray()
+    const contacts = await this.base.view.find('@wdk-addressbook/contacts', {}).toArray()
+    const addresses = await this.base.view.find('@wdk-addressbook/addresses', {}).toArray()
 
     const matchedContactIds = new Set()
 
@@ -437,7 +437,7 @@ class AddressBook extends ReadyResource {
       throw new Error('Unsupported address type: ' + record.type)
     }
 
-    const all = await this.base.view.find('@addressbook/addresses', {}).toArray()
+    const all = await this.base.view.find('@wdk-addressbook/addresses', {}).toArray()
     const addresses = excludeId === null ? all : all.filter((a) => a.id !== excludeId)
 
     if (record.type === ADDRESS_TYPES.UMA) {
@@ -460,41 +460,41 @@ class AddressBook extends ReadyResource {
   async addWriter (data) {
     if (typeof data === 'string') data = b4a.from(data, 'hex')
     if (b4a.isBuffer(data)) data = { key: data, name: null }
-    await this.base.append(encode('@addressbook/add-writer', data))
+    await this.base.append(encode('@wdk-addressbook/add-writer', data))
   }
 
   async removeWriter (key) {
     await this.base.append(
-      encode('@addressbook/remove-writer', {
+      encode('@wdk-addressbook/remove-writer', {
         key: b4a.isBuffer(key) ? key : b4a.from(key, 'hex')
       })
     )
   }
 
   listWriters (query) {
-    return this.base.view.find('@addressbook/writer', query || {})
+    return this.base.view.find('@wdk-addressbook/writer', query || {})
   }
 
   async getWriter (key) {
-    return this.base.view.get('@addressbook/writer', { key })
+    return this.base.view.get('@wdk-addressbook/writer', { key })
   }
 
   // Mirrors
 
   async addMirror (key) {
     const keyBuffer = enc.decode(enc.normalize(key))
-    await this.base.append(encode('@addressbook/add-mirror', { key: keyBuffer }))
+    await this.base.append(encode('@wdk-addressbook/add-mirror', { key: keyBuffer }))
     await this._updatePeering()
   }
 
   async listMirrors () {
-    const results = await this.base.view.find('@addressbook/mirrors', {}).toArray()
+    const results = await this.base.view.find('@wdk-addressbook/mirrors', {}).toArray()
     return results.map((r) => ({ ...r, key: enc.encode(r.key) }))
   }
 
   async removeMirror (key) {
     const keyBuffer = enc.decode(enc.normalize(key))
-    await this.base.append(encode('@addressbook/del-mirror', { key: keyBuffer }))
+    await this.base.append(encode('@wdk-addressbook/del-mirror', { key: keyBuffer }))
     await this._updatePeering()
   }
 

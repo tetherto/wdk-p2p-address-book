@@ -7,7 +7,7 @@ import { version, getEncoding, setVersion } from './messages.js'
 const defaultVersion = version
 
 class Router {
-  constructor() {
+  constructor () {
     this._handler0 = null
     this._handler1 = null
     this._handler2 = null
@@ -20,30 +20,30 @@ class Router {
     this._missing = 8
   }
 
-  add(name, handler) {
+  add (name, handler) {
     switch (name) {
-      case '@addressbook/put-contact':
+      case '@wdk-addressbook/put-contact':
         this._handler0 = handler
         break
-      case '@addressbook/del-contact':
+      case '@wdk-addressbook/del-contact':
         this._handler1 = handler
         break
-      case '@addressbook/put-address':
+      case '@wdk-addressbook/put-address':
         this._handler2 = handler
         break
-      case '@addressbook/del-address':
+      case '@wdk-addressbook/del-address':
         this._handler3 = handler
         break
-      case '@addressbook/add-writer':
+      case '@wdk-addressbook/add-writer':
         this._handler4 = handler
         break
-      case '@addressbook/remove-writer':
+      case '@wdk-addressbook/remove-writer':
         this._handler5 = handler
         break
-      case '@addressbook/add-mirror':
+      case '@wdk-addressbook/add-mirror':
         this._handler6 = handler
         break
-      case '@addressbook/del-mirror':
+      case '@wdk-addressbook/del-mirror':
         this._handler7 = handler
         break
       default:
@@ -52,18 +52,18 @@ class Router {
     this._missing--
   }
 
-  _checkAll() {
-    assert(this._handler0 !== null, 'Missing handler for "@addressbook/put-contact"')
-    assert(this._handler1 !== null, 'Missing handler for "@addressbook/del-contact"')
-    assert(this._handler2 !== null, 'Missing handler for "@addressbook/put-address"')
-    assert(this._handler3 !== null, 'Missing handler for "@addressbook/del-address"')
-    assert(this._handler4 !== null, 'Missing handler for "@addressbook/add-writer"')
-    assert(this._handler5 !== null, 'Missing handler for "@addressbook/remove-writer"')
-    assert(this._handler6 !== null, 'Missing handler for "@addressbook/add-mirror"')
-    assert(this._handler7 !== null, 'Missing handler for "@addressbook/del-mirror"')
+  _checkAll () {
+    assert(this._handler0 !== null, 'Missing handler for "@wdk-addressbook/put-contact"')
+    assert(this._handler1 !== null, 'Missing handler for "@wdk-addressbook/del-contact"')
+    assert(this._handler2 !== null, 'Missing handler for "@wdk-addressbook/put-address"')
+    assert(this._handler3 !== null, 'Missing handler for "@wdk-addressbook/del-address"')
+    assert(this._handler4 !== null, 'Missing handler for "@wdk-addressbook/add-writer"')
+    assert(this._handler5 !== null, 'Missing handler for "@wdk-addressbook/remove-writer"')
+    assert(this._handler6 !== null, 'Missing handler for "@wdk-addressbook/add-mirror"')
+    assert(this._handler7 !== null, 'Missing handler for "@wdk-addressbook/del-mirror"')
   }
 
-  async dispatch(message, context) {
+  async dispatch (message, context) {
     if (this._missing > 0) {
       this._checkAll()
     }
@@ -95,7 +95,7 @@ class Router {
   }
 }
 
-function encode(name, message, { version = defaultVersion } = {}) {
+function encode (name, message, { version = defaultVersion } = {}) {
   const state = { buffer: null, start: 0, end: 0 }
 
   const route = getRouteByName(name)
@@ -111,7 +111,7 @@ function encode(name, message, { version = defaultVersion } = {}) {
   return state.buffer
 }
 
-function decode(buffer, { version = defaultVersion } = {}) {
+function decode (buffer, { version = defaultVersion } = {}) {
   const state = { buffer, start: 0, end: buffer.length }
 
   const id = c.uint.decode(state)
@@ -123,77 +123,77 @@ function decode(buffer, { version = defaultVersion } = {}) {
 }
 
 const route0 = {
-  name: '@addressbook/put-contact',
+  name: '@wdk-addressbook/put-contact',
   id: 0,
-  enc: getEncoding('@addressbook/contact')
+  enc: getEncoding('@wdk-addressbook/contact')
 }
 
 const route1 = {
-  name: '@addressbook/del-contact',
+  name: '@wdk-addressbook/del-contact',
   id: 1,
-  enc: getEncoding('@addressbook/del-contact')
+  enc: getEncoding('@wdk-addressbook/del-contact')
 }
 
 const route2 = {
-  name: '@addressbook/put-address',
+  name: '@wdk-addressbook/put-address',
   id: 2,
-  enc: getEncoding('@addressbook/address')
+  enc: getEncoding('@wdk-addressbook/address')
 }
 
 const route3 = {
-  name: '@addressbook/del-address',
+  name: '@wdk-addressbook/del-address',
   id: 3,
-  enc: getEncoding('@addressbook/del-address')
+  enc: getEncoding('@wdk-addressbook/del-address')
 }
 
 const route4 = {
-  name: '@addressbook/add-writer',
+  name: '@wdk-addressbook/add-writer',
   id: 4,
-  enc: getEncoding('@addressbook/writer')
+  enc: getEncoding('@wdk-addressbook/writer')
 }
 
 const route5 = {
-  name: '@addressbook/remove-writer',
+  name: '@wdk-addressbook/remove-writer',
   id: 5,
-  enc: getEncoding('@addressbook/writer')
+  enc: getEncoding('@wdk-addressbook/writer')
 }
 
 const route6 = {
-  name: '@addressbook/add-mirror',
+  name: '@wdk-addressbook/add-mirror',
   id: 6,
-  enc: getEncoding('@addressbook/mirror')
+  enc: getEncoding('@wdk-addressbook/mirror')
 }
 
 const route7 = {
-  name: '@addressbook/del-mirror',
+  name: '@wdk-addressbook/del-mirror',
   id: 7,
-  enc: getEncoding('@addressbook/del-mirror')
+  enc: getEncoding('@wdk-addressbook/del-mirror')
 }
 
-function getRouteByName(name) {
+function getRouteByName (name) {
   switch (name) {
-    case '@addressbook/put-contact':
+    case '@wdk-addressbook/put-contact':
       return route0
-    case '@addressbook/del-contact':
+    case '@wdk-addressbook/del-contact':
       return route1
-    case '@addressbook/put-address':
+    case '@wdk-addressbook/put-address':
       return route2
-    case '@addressbook/del-address':
+    case '@wdk-addressbook/del-address':
       return route3
-    case '@addressbook/add-writer':
+    case '@wdk-addressbook/add-writer':
       return route4
-    case '@addressbook/remove-writer':
+    case '@wdk-addressbook/remove-writer':
       return route5
-    case '@addressbook/add-mirror':
+    case '@wdk-addressbook/add-mirror':
       return route6
-    case '@addressbook/del-mirror':
+    case '@wdk-addressbook/del-mirror':
       return route7
     default:
       throw DispatchError.ROUTE_NOT_FOUND_BY_NAME(name)
   }
 }
 
-function getRouteById(id) {
+function getRouteById (id) {
   switch (id) {
     case 0:
       return route0
@@ -216,4 +216,11 @@ function getRouteById(id) {
   }
 }
 
-export { version, encode, decode, Router, DispatchError, ERRORS }
+export {
+  version,
+  encode,
+  decode,
+  Router,
+  DispatchError,
+  ERRORS
+}

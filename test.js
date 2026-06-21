@@ -285,8 +285,8 @@ test('apply deterministically enforces uniqueness across raw appends', async fun
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
-  await book.base.append(encode('@addressbook/put-address', { ...baseAddr, id: 'addr-1' }))
-  await book.base.append(encode('@addressbook/put-address', { ...baseAddr, id: 'addr-2' }))
+  await book.base.append(encode('@wdk-addressbook/put-address', { ...baseAddr, id: 'addr-1' }))
+  await book.base.append(encode('@wdk-addressbook/put-address', { ...baseAddr, id: 'addr-2' }))
   await book.base.update()
 
   const addrs = await book.listAddresses(alice.id)
@@ -303,9 +303,9 @@ test('apply deterministically enforces uniqueness across raw appends', async fun
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
-  await book.base.append(encode('@addressbook/put-address', { ...baseUma, id: 'uma-1' }))
+  await book.base.append(encode('@wdk-addressbook/put-address', { ...baseUma, id: 'uma-1' }))
   await book.base.append(
-    encode('@addressbook/put-address', { ...baseUma, id: 'uma-2', network: 'polygon' })
+    encode('@wdk-addressbook/put-address', { ...baseUma, id: 'uma-2', network: 'polygon' })
   )
   await book.base.update()
 

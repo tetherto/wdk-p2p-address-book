@@ -3,7 +3,7 @@
   "schema": [
     {
       "name": "contact",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [
@@ -35,7 +35,7 @@
     },
     {
       "name": "address",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": 5,
       "fields": [
@@ -90,7 +90,7 @@
     },
     {
       "name": "writer",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": 1,
       "fields": [
@@ -109,7 +109,7 @@
     },
     {
       "name": "del-contact",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [
@@ -123,7 +123,7 @@
     },
     {
       "name": "del-address",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [
@@ -137,7 +137,7 @@
     },
     {
       "name": "mirror",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [
@@ -151,7 +151,7 @@
     },
     {
       "name": "del-mirror",
-      "namespace": "addressbook",
+      "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [

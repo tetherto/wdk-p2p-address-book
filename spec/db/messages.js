@@ -11,7 +11,7 @@ const VERSION = 1
 // eslint-disable-next-line no-unused-vars
 let version = VERSION
 
-// @addressbook/contact
+// @wdk-addressbook/contact
 const encoding0 = {
   preencode(state, m) {
     c.string.preencode(state, m.id)
@@ -40,7 +40,7 @@ const encoding0 = {
   }
 }
 
-// @addressbook/address
+// @wdk-addressbook/address
 const encoding1 = {
   preencode(state, m) {
     c.string.preencode(state, m.id)
@@ -89,7 +89,7 @@ const encoding1 = {
   }
 }
 
-// @addressbook/writer
+// @wdk-addressbook/writer
 const encoding2 = {
   preencode(state, m) {
     c.buffer.preencode(state, m.key)
@@ -116,7 +116,7 @@ const encoding2 = {
   }
 }
 
-// @addressbook/del-contact
+// @wdk-addressbook/del-contact
 const encoding3 = {
   preencode(state, m) {
     c.string.preencode(state, m.id)
@@ -133,10 +133,10 @@ const encoding3 = {
   }
 }
 
-// @addressbook/del-address
+// @wdk-addressbook/del-address
 const encoding4 = encoding3
 
-// @addressbook/mirror
+// @wdk-addressbook/mirror
 const encoding5 = {
   preencode(state, m) {
     c.fixed32.preencode(state, m.key)
@@ -153,10 +153,10 @@ const encoding5 = {
   }
 }
 
-// @addressbook/del-mirror
+// @wdk-addressbook/del-mirror
 const encoding6 = encoding5
 
-// @addressbook/contact/hyperdb#0
+// @wdk-addressbook/contact/hyperdb#0
 const encoding7 = {
   preencode(state, m) {
     c.string.preencode(state, m.name)
@@ -182,7 +182,7 @@ const encoding7 = {
   }
 }
 
-// @addressbook/address/hyperdb#1
+// @wdk-addressbook/address/hyperdb#1
 const encoding8 = {
   preencode(state, m) {
     c.string.preencode(state, m.contactId)
@@ -228,7 +228,7 @@ const encoding8 = {
   }
 }
 
-// @addressbook/writer/hyperdb#3
+// @wdk-addressbook/writer/hyperdb#3
 const encoding9 = {
   preencode(state, m) {
     state.end++ // max flag is 1 so always one byte
@@ -252,10 +252,14 @@ const encoding9 = {
   }
 }
 
-// @addressbook/mirror/hyperdb#4
+// @wdk-addressbook/mirror/hyperdb#4
 const encoding10 = {
-  preencode(state, m) {},
-  encode(state, m) {},
+  preencode(state, m) {
+
+  },
+  encode(state, m) {
+
+  },
   decode(state) {
     return {
       key: null
@@ -286,27 +290,27 @@ function getEnum(name) {
 
 function getEncoding(name) {
   switch (name) {
-    case '@addressbook/contact':
+    case '@wdk-addressbook/contact':
       return encoding0
-    case '@addressbook/address':
+    case '@wdk-addressbook/address':
       return encoding1
-    case '@addressbook/writer':
+    case '@wdk-addressbook/writer':
       return encoding2
-    case '@addressbook/del-contact':
+    case '@wdk-addressbook/del-contact':
       return encoding3
-    case '@addressbook/del-address':
+    case '@wdk-addressbook/del-address':
       return encoding4
-    case '@addressbook/mirror':
+    case '@wdk-addressbook/mirror':
       return encoding5
-    case '@addressbook/del-mirror':
+    case '@wdk-addressbook/del-mirror':
       return encoding6
-    case '@addressbook/contact/hyperdb#0':
+    case '@wdk-addressbook/contact/hyperdb#0':
       return encoding7
-    case '@addressbook/address/hyperdb#1':
+    case '@wdk-addressbook/address/hyperdb#1':
       return encoding8
-    case '@addressbook/writer/hyperdb#3':
+    case '@wdk-addressbook/writer/hyperdb#3':
       return encoding9
-    case '@addressbook/mirror/hyperdb#4':
+    case '@wdk-addressbook/mirror/hyperdb#4':
       return encoding10
     default:
       throw new Error('Encoder not found ' + name)

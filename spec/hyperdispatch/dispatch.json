@@ -4,50 +4,50 @@
   "schema": [
     {
       "id": 0,
-      "name": "@addressbook/put-contact",
-      "requestType": "@addressbook/contact",
+      "name": "@wdk-addressbook/put-contact",
+      "requestType": "@wdk-addressbook/contact",
       "version": 1
     },
     {
       "id": 1,
-      "name": "@addressbook/del-contact",
-      "requestType": "@addressbook/del-contact",
+      "name": "@wdk-addressbook/del-contact",
+      "requestType": "@wdk-addressbook/del-contact",
       "version": 1
     },
     {
       "id": 2,
-      "name": "@addressbook/put-address",
-      "requestType": "@addressbook/address",
+      "name": "@wdk-addressbook/put-address",
+      "requestType": "@wdk-addressbook/address",
       "version": 1
     },
     {
       "id": 3,
-      "name": "@addressbook/del-address",
-      "requestType": "@addressbook/del-address",
+      "name": "@wdk-addressbook/del-address",
+      "requestType": "@wdk-addressbook/del-address",
       "version": 1
     },
     {
       "id": 4,
-      "name": "@addressbook/add-writer",
-      "requestType": "@addressbook/writer",
+      "name": "@wdk-addressbook/add-writer",
+      "requestType": "@wdk-addressbook/writer",
       "version": 1
     },
     {
       "id": 5,
-      "name": "@addressbook/remove-writer",
-      "requestType": "@addressbook/writer",
+      "name": "@wdk-addressbook/remove-writer",
+      "requestType": "@wdk-addressbook/writer",
       "version": 1
     },
     {
       "id": 6,
-      "name": "@addressbook/add-mirror",
-      "requestType": "@addressbook/mirror",
+      "name": "@wdk-addressbook/add-mirror",
+      "requestType": "@wdk-addressbook/mirror",
       "version": 1
     },
     {
       "id": 7,
-      "name": "@addressbook/del-mirror",
-      "requestType": "@addressbook/del-mirror",
+      "name": "@wdk-addressbook/del-mirror",
+      "requestType": "@wdk-addressbook/del-mirror",
       "version": 1
     }
   ]

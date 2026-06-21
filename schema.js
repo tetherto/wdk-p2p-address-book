@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from 'fs'
 
 // SCHEMA CREATION START //
 const addressbook = Hyperschema.from('./spec/schema')
-const ns = addressbook.namespace('addressbook')
+const ns = addressbook.namespace('wdk-addressbook')
 
 ns.register({
   name: 'contact',
@@ -147,35 +147,35 @@ ns.register({
 Hyperschema.toDisk(addressbook, { esm: true })
 
 const dbTemplate = HyperdbBuilder.from('./spec/schema', './spec/db')
-const db = dbTemplate.namespace('addressbook')
+const db = dbTemplate.namespace('wdk-addressbook')
 
 db.collections.register({
   name: 'contacts',
-  schema: '@addressbook/contact',
+  schema: '@wdk-addressbook/contact',
   key: ['id']
 })
 
 db.collections.register({
   name: 'addresses',
-  schema: '@addressbook/address',
+  schema: '@wdk-addressbook/address',
   key: ['id']
 })
 
 db.indexes.register({
   name: 'addresses-by-contact',
-  collection: '@addressbook/addresses',
+  collection: '@wdk-addressbook/addresses',
   key: ['contactId']
 })
 
 db.collections.register({
   name: 'writer',
-  schema: '@addressbook/writer',
+  schema: '@wdk-addressbook/writer',
   key: ['key']
 })
 
 db.collections.register({
   name: 'mirrors',
-  schema: '@addressbook/mirror',
+  schema: '@wdk-addressbook/mirror',
   key: ['key']
 })
 
@@ -186,46 +186,46 @@ ensureEsmExport(
 )
 
 const hyperdispatch = Hyperdispatch.from('./spec/schema', './spec/hyperdispatch')
-const dispatch = hyperdispatch.namespace('addressbook')
+const dispatch = hyperdispatch.namespace('wdk-addressbook')
 
 dispatch.register({
   name: 'put-contact',
-  requestType: '@addressbook/contact'
+  requestType: '@wdk-addressbook/contact'
 })
 
 dispatch.register({
   name: 'del-contact',
-  requestType: '@addressbook/del-contact'
+  requestType: '@wdk-addressbook/del-contact'
 })
 
 dispatch.register({
   name: 'put-address',
-  requestType: '@addressbook/address'
+  requestType: '@wdk-addressbook/address'
 })
 
 dispatch.register({
   name: 'del-address',
-  requestType: '@addressbook/del-address'
+  requestType: '@wdk-addressbook/del-address'
 })
 
 dispatch.register({
   name: 'add-writer',
-  requestType: '@addressbook/writer'
+  requestType: '@wdk-addressbook/writer'
 })
 
 dispatch.register({
   name: 'remove-writer',
-  requestType: '@addressbook/writer'
+  requestType: '@wdk-addressbook/writer'
 })
 
 dispatch.register({
   name: 'add-mirror',
-  requestType: '@addressbook/mirror'
+  requestType: '@wdk-addressbook/mirror'
 })
 
 dispatch.register({
   name: 'del-mirror',
-  requestType: '@addressbook/del-mirror'
+  requestType: '@wdk-addressbook/del-mirror'
 })
 
 Hyperdispatch.toDisk(hyperdispatch, { esm: true })

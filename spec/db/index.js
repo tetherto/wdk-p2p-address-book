@@ -6,19 +6,21 @@ import { version, getEncoding, setVersion } from './messages.js'
 
 const versions = { schema: version, db: 1 }
 
-// '@addressbook/contacts' collection key
-const collection0_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 0 })
+// '@wdk-addressbook/contacts' collection key
+const collection0_key = new IndexEncoder([
+  IndexEncoder.STRING
+], { prefix: 0 })
 
-function collection0_indexify(record) {
+function collection0_indexify (record) {
   const a = record.id
   return a === undefined ? [] : [a]
 }
 
-// '@addressbook/contacts' value encoding
-const collection0_enc = getEncoding('@addressbook/contact/hyperdb#0')
+// '@wdk-addressbook/contacts' value encoding
+const collection0_enc = getEncoding('@wdk-addressbook/contact/hyperdb#0')
 
-// '@addressbook/contacts' reconstruction function
-function collection0_reconstruct(schemaVersion, keyBuf, valueBuf) {
+// '@wdk-addressbook/contacts' reconstruction function
+function collection0_reconstruct (schemaVersion, keyBuf, valueBuf) {
   const key = collection0_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -29,24 +31,24 @@ function collection0_reconstruct(schemaVersion, keyBuf, valueBuf) {
   record.id = key[0]
   return record
 }
-// '@addressbook/contacts' key reconstruction function
-function collection0_reconstruct_key(keyBuf) {
+// '@wdk-addressbook/contacts' key reconstruction function
+function collection0_reconstruct_key (keyBuf) {
   const key = collection0_key.decode(keyBuf)
   return {
     id: key[0]
   }
 }
 
-// '@addressbook/contacts'
+// '@wdk-addressbook/contacts'
 const collection0 = {
-  name: '@addressbook/contacts',
+  name: '@wdk-addressbook/contacts',
   id: 0,
   version: 1,
-  encodeKey(record) {
+  encodeKey (record) {
     const key = [record.id]
     return collection0_key.encode(key)
   },
-  encodeKeyRange({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
     return collection0_key.encodeRange({
       gt: gt ? collection0_indexify(gt) : null,
       lt: lt ? collection0_indexify(lt) : null,
@@ -54,7 +56,7 @@ const collection0 = {
       lte: lte ? collection0_indexify(lte) : null
     })
   },
-  encodeValue(schemaVersion, collectionVersion, record) {
+  encodeValue (schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 2, buffer: null }
     collection0_enc.preencode(state, record)
@@ -71,19 +73,21 @@ const collection0 = {
   decodedVersion: 0
 }
 
-// '@addressbook/addresses' collection key
-const collection1_key = new IndexEncoder([IndexEncoder.STRING], { prefix: 1 })
+// '@wdk-addressbook/addresses' collection key
+const collection1_key = new IndexEncoder([
+  IndexEncoder.STRING
+], { prefix: 1 })
 
-function collection1_indexify(record) {
+function collection1_indexify (record) {
   const a = record.id
   return a === undefined ? [] : [a]
 }
 
-// '@addressbook/addresses' value encoding
-const collection1_enc = getEncoding('@addressbook/address/hyperdb#1')
+// '@wdk-addressbook/addresses' value encoding
+const collection1_enc = getEncoding('@wdk-addressbook/address/hyperdb#1')
 
-// '@addressbook/addresses' reconstruction function
-function collection1_reconstruct(schemaVersion, keyBuf, valueBuf) {
+// '@wdk-addressbook/addresses' reconstruction function
+function collection1_reconstruct (schemaVersion, keyBuf, valueBuf) {
   const key = collection1_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -94,24 +98,24 @@ function collection1_reconstruct(schemaVersion, keyBuf, valueBuf) {
   record.id = key[0]
   return record
 }
-// '@addressbook/addresses' key reconstruction function
-function collection1_reconstruct_key(keyBuf) {
+// '@wdk-addressbook/addresses' key reconstruction function
+function collection1_reconstruct_key (keyBuf) {
   const key = collection1_key.decode(keyBuf)
   return {
     id: key[0]
   }
 }
 
-// '@addressbook/addresses'
+// '@wdk-addressbook/addresses'
 const collection1 = {
-  name: '@addressbook/addresses',
+  name: '@wdk-addressbook/addresses',
   id: 1,
   version: 1,
-  encodeKey(record) {
+  encodeKey (record) {
     const key = [record.id]
     return collection1_key.encode(key)
   },
-  encodeKeyRange({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
     return collection1_key.encodeRange({
       gt: gt ? collection1_indexify(gt) : null,
       lt: lt ? collection1_indexify(lt) : null,
@@ -119,7 +123,7 @@ const collection1 = {
       lte: lte ? collection1_indexify(lte) : null
     })
   },
-  encodeValue(schemaVersion, collectionVersion, record) {
+  encodeValue (schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 2, buffer: null }
     collection1_enc.preencode(state, record)
@@ -136,10 +140,13 @@ const collection1 = {
   decodedVersion: 0
 }
 
-// '@addressbook/addresses-by-contact' collection key
-const index2_key = new IndexEncoder([IndexEncoder.STRING, IndexEncoder.STRING], { prefix: 2 })
+// '@wdk-addressbook/addresses-by-contact' collection key
+const index2_key = new IndexEncoder([
+  IndexEncoder.STRING,
+  IndexEncoder.STRING
+], { prefix: 2 })
 
-function index2_indexify(record) {
+function index2_indexify (record) {
   const arr = []
 
   const a0 = record.contactId
@@ -153,15 +160,15 @@ function index2_indexify(record) {
   return arr
 }
 
-// '@addressbook/addresses-by-contact'
+// '@wdk-addressbook/addresses-by-contact'
 const index2 = {
-  name: '@addressbook/addresses-by-contact',
+  name: '@wdk-addressbook/addresses-by-contact',
   version: 1,
   id: 2,
-  encodeKey(record) {
+  encodeKey (record) {
     return index2_key.encode(index2_indexify(record))
   },
-  encodeKeyRange({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
     return index2_key.encodeRange({
       gt: gt ? index2_indexify(gt) : null,
       lt: lt ? index2_indexify(lt) : null,
@@ -170,7 +177,7 @@ const index2 = {
     })
   },
   encodeValue: (record) => index2.collection.encodeKey(record),
-  encodeIndexKeys(record, context) {
+  encodeIndexKeys (record, context) {
     return [index2_key.encode([record.contactId, record.id])]
   },
   reconstruct: (keyBuf, valueBuf) => valueBuf,
@@ -179,19 +186,21 @@ const index2 = {
 }
 collection1.indexes.push(index2)
 
-// '@addressbook/writer' collection key
-const collection3_key = new IndexEncoder([IndexEncoder.BUFFER], { prefix: 3 })
+// '@wdk-addressbook/writer' collection key
+const collection3_key = new IndexEncoder([
+  IndexEncoder.BUFFER
+], { prefix: 3 })
 
-function collection3_indexify(record) {
+function collection3_indexify (record) {
   const a = record.key
   return a === undefined ? [] : [a]
 }
 
-// '@addressbook/writer' value encoding
-const collection3_enc = getEncoding('@addressbook/writer/hyperdb#3')
+// '@wdk-addressbook/writer' value encoding
+const collection3_enc = getEncoding('@wdk-addressbook/writer/hyperdb#3')
 
-// '@addressbook/writer' reconstruction function
-function collection3_reconstruct(schemaVersion, keyBuf, valueBuf) {
+// '@wdk-addressbook/writer' reconstruction function
+function collection3_reconstruct (schemaVersion, keyBuf, valueBuf) {
   const key = collection3_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -202,24 +211,24 @@ function collection3_reconstruct(schemaVersion, keyBuf, valueBuf) {
   record.key = key[0]
   return record
 }
-// '@addressbook/writer' key reconstruction function
-function collection3_reconstruct_key(keyBuf) {
+// '@wdk-addressbook/writer' key reconstruction function
+function collection3_reconstruct_key (keyBuf) {
   const key = collection3_key.decode(keyBuf)
   return {
     key: key[0]
   }
 }
 
-// '@addressbook/writer'
+// '@wdk-addressbook/writer'
 const collection3 = {
-  name: '@addressbook/writer',
+  name: '@wdk-addressbook/writer',
   id: 3,
   version: 1,
-  encodeKey(record) {
+  encodeKey (record) {
     const key = [record.key]
     return collection3_key.encode(key)
   },
-  encodeKeyRange({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
     return collection3_key.encodeRange({
       gt: gt ? collection3_indexify(gt) : null,
       lt: lt ? collection3_indexify(lt) : null,
@@ -227,7 +236,7 @@ const collection3 = {
       lte: lte ? collection3_indexify(lte) : null
     })
   },
-  encodeValue(schemaVersion, collectionVersion, record) {
+  encodeValue (schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 2, buffer: null }
     collection3_enc.preencode(state, record)
@@ -244,19 +253,21 @@ const collection3 = {
   decodedVersion: 0
 }
 
-// '@addressbook/mirrors' collection key
-const collection4_key = new IndexEncoder([IndexEncoder.BUFFER], { prefix: 4 })
+// '@wdk-addressbook/mirrors' collection key
+const collection4_key = new IndexEncoder([
+  IndexEncoder.BUFFER
+], { prefix: 4 })
 
-function collection4_indexify(record) {
+function collection4_indexify (record) {
   const a = record.key
   return a === undefined ? [] : [a]
 }
 
-// '@addressbook/mirrors' value encoding
-const collection4_enc = getEncoding('@addressbook/mirror/hyperdb#4')
+// '@wdk-addressbook/mirrors' value encoding
+const collection4_enc = getEncoding('@wdk-addressbook/mirror/hyperdb#4')
 
-// '@addressbook/mirrors' reconstruction function
-function collection4_reconstruct(schemaVersion, keyBuf, valueBuf) {
+// '@wdk-addressbook/mirrors' reconstruction function
+function collection4_reconstruct (schemaVersion, keyBuf, valueBuf) {
   const key = collection4_key.decode(keyBuf)
   setVersion(schemaVersion)
   const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
@@ -267,24 +278,24 @@ function collection4_reconstruct(schemaVersion, keyBuf, valueBuf) {
   record.key = key[0]
   return record
 }
-// '@addressbook/mirrors' key reconstruction function
-function collection4_reconstruct_key(keyBuf) {
+// '@wdk-addressbook/mirrors' key reconstruction function
+function collection4_reconstruct_key (keyBuf) {
   const key = collection4_key.decode(keyBuf)
   return {
     key: key[0]
   }
 }
 
-// '@addressbook/mirrors'
+// '@wdk-addressbook/mirrors'
 const collection4 = {
-  name: '@addressbook/mirrors',
+  name: '@wdk-addressbook/mirrors',
   id: 4,
   version: 1,
-  encodeKey(record) {
+  encodeKey (record) {
     const key = [record.key]
     return collection4_key.encode(key)
   },
-  encodeKeyRange({ gt, lt, gte, lte } = {}) {
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
     return collection4_key.encodeRange({
       gt: gt ? collection4_indexify(gt) : null,
       lt: lt ? collection4_indexify(lt) : null,
@@ -292,7 +303,7 @@ const collection4 = {
       lte: lte ? collection4_indexify(lte) : null
     })
   },
-  encodeValue(schemaVersion, collectionVersion, record) {
+  encodeValue (schemaVersion, collectionVersion, record) {
     setVersion(schemaVersion)
     const state = { start: 0, end: 2, buffer: null }
     collection4_enc.preencode(state, record)
@@ -309,33 +320,33 @@ const collection4 = {
   decodedVersion: 0
 }
 
-const collections = [collection0, collection1, collection3, collection4]
+const collections = [
+  collection0,
+  collection1,
+  collection3,
+  collection4
+]
 
-const indexes = [index2]
+const indexes = [
+  index2
+]
 
 export default { versions, collections, indexes, resolveCollection, resolveIndex }
 
-function resolveCollection(name) {
+function resolveCollection (name) {
   switch (name) {
-    case '@addressbook/contacts':
-      return collection0
-    case '@addressbook/addresses':
-      return collection1
-    case '@addressbook/writer':
-      return collection3
-    case '@addressbook/mirrors':
-      return collection4
-    default:
-      return null
+    case '@wdk-addressbook/contacts': return collection0
+    case '@wdk-addressbook/addresses': return collection1
+    case '@wdk-addressbook/writer': return collection3
+    case '@wdk-addressbook/mirrors': return collection4
+    default: return null
   }
 }
 
-function resolveIndex(name) {
+function resolveIndex (name) {
   switch (name) {
-    case '@addressbook/addresses-by-contact':
-      return index2
-    default:
-      return null
+    case '@wdk-addressbook/addresses-by-contact': return index2
+    default: return null
   }
 }
 
