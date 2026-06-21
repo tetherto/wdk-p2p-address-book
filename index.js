@@ -102,11 +102,20 @@ class AddressBook extends ReadyResource {
       await context.view.delete('@wdk-addressbook/mirrors', { key: data.key })
     })
 
-    this._boot(opts)
-    this.ready().catch(noop)
+    this._bootOpts = opts
   }
 
-  _boot (opts = {}) {
+  async _apply (nodes, view, base) {
+    for (const node of nodes) {
+      await this.router.dispatch(node.value, { view, base })
+    }
+    await view.flush()
+  }
+
+  async _open () {
+    if (this.base) throw new Error('Address book is already open')
+
+    const opts = this._bootOpts
     const { encryptionKey, key, wakeup } = opts
 
     this.base = new Autobase(this.store, key, {
@@ -130,16 +139,7 @@ class AddressBook extends ReadyResource {
         this._updatePeeringBackground()
       }
     })
-  }
 
-  async _apply (nodes, view, base) {
-    for (const node of nodes) {
-      await this.router.dispatch(node.value, { view, base })
-    }
-    await view.flush()
-  }
-
-  async _open () {
     await this.base.ready()
     if (this.replicate) await this._replicate()
   }
@@ -147,7 +147,11 @@ class AddressBook extends ReadyResource {
   async _close () {
     if (this.peering) await this.peering.close()
     if (this.swarm) await this.swarm.destroy()
-    await this.base.close()
+    if (this.base) await this.base.close()
+
+    this.peering = null
+    this.swarm = null
+    this.base = null
   }
 
   // Properties
