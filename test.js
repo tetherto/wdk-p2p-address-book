@@ -491,7 +491,7 @@ test('created device uses a device-specific writer and reopens writable', async 
 
 let seedCounter = 0
 
-async function createBook(t, opts) {
+async function createBook (t, opts) {
   const store = new Corestore(await tmp(t))
   const seed = b4a.alloc(64, seedCounter++ % 256)
   const book = await AddressBook.fromSeed(seed, store, {
@@ -506,7 +506,7 @@ async function createBook(t, opts) {
   return book
 }
 
-function deriveBootstrapKeyPair(seed, namespace = TEST_NAMESPACE) {
+function deriveBootstrapKeyPair (seed, namespace = TEST_NAMESPACE) {
   return deriveSeedKeyPair(seed, {
     salt: ADDRESS_BOOK_SEED_SALT,
     info: namespace + ':' + ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO

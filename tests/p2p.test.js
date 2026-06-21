@@ -108,7 +108,7 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   )
 
   // Seed a user's book on a device and push it to the single shared mirror, then go offline.
-  async function seedUser(seed, contactName) {
+  async function seedUser (seed, contactName) {
     const deviceA = await createDevice(t, seed, { bootstrap: testnet.bootstrap })
     await deviceA.addMirror(mirror.publicKey)
     const contact = await deviceA.addContact({ name: contactName })
@@ -157,27 +157,27 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   t.absent(await restore2.getContact(u1.contact.id), 'user 2 cannot read user 1 data')
 })
 
-async function createDevice(t, seed, opts) {
+async function createDevice (t, seed, opts) {
   const store = new Corestore(await tmp(t))
   const book = await AddressBook.fromSeed(seed, store, { namespace: TEST_NAMESPACE, ...opts })
   t.teardown(() => closeIfOpen(book))
   return book
 }
 
-function deriveBootstrapKeyPair(seed, namespace = TEST_NAMESPACE) {
+function deriveBootstrapKeyPair (seed, namespace = TEST_NAMESPACE) {
   return deriveSeedKeyPair(seed, {
     salt: ADDRESS_BOOK_SEED_SALT,
     info: namespace + ':' + ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
   })
 }
 
-function getWriterCores(base) {
+function getWriterCores (base) {
   const cores = [base.local]
   for (const writer of base.activeWriters) cores.push(writer.core)
   return dedupeCores(cores)
 }
 
-async function mirroredCoreLengths(mirror, cores) {
+async function mirroredCoreLengths (mirror, cores) {
   const result = []
   for (const source of cores) {
     const mirrored = mirror.store.get({ key: source.key })
@@ -193,7 +193,7 @@ async function mirroredCoreLengths(mirror, cores) {
   return result
 }
 
-function dedupeCores(cores) {
+function dedupeCores (cores) {
   const seen = new Set()
   const result = []
   for (const core of cores) {
@@ -205,7 +205,7 @@ function dedupeCores(cores) {
   return result
 }
 
-async function waitFor(fn, label, { timeout = 20000, interval = 100 } = {}) {
+async function waitFor (fn, label, { timeout = 20000, interval = 100 } = {}) {
   const deadline = Date.now() + timeout
   let lastError = null
 
@@ -224,11 +224,11 @@ async function waitFor(fn, label, { timeout = 20000, interval = 100 } = {}) {
   throw error
 }
 
-function delay(ms) {
+function delay (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function closeIfOpen(resource) {
+async function closeIfOpen (resource) {
   if (!resource || resource.closed || resource.closing) return
   await resource.close()
 }

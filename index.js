@@ -35,7 +35,7 @@ const BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 const MAX_CONTACT_NAME_LENGTH = 256
 
 class AddressBook extends ReadyResource {
-  constructor(corestore, opts = {}) {
+  constructor (corestore, opts = {}) {
     super()
     this.router = new Router()
     this.store = corestore
@@ -106,7 +106,7 @@ class AddressBook extends ReadyResource {
     this.ready().catch(noop)
   }
 
-  _boot(opts = {}) {
+  _boot (opts = {}) {
     const { encryptionKey, key, wakeup } = opts
 
     this.base = new Autobase(this.store, key, {
@@ -115,7 +115,7 @@ class AddressBook extends ReadyResource {
       encryptionKey,
       keyPair: opts.keyPair || null,
       optimistic: !!opts.optimistic,
-      open(store) {
+      open (store) {
         return HyperDB.bee(store.get('view'), db, {
           extension: false,
           autoUpdate: true
@@ -132,19 +132,19 @@ class AddressBook extends ReadyResource {
     })
   }
 
-  async _apply(nodes, view, base) {
+  async _apply (nodes, view, base) {
     for (const node of nodes) {
       await this.router.dispatch(node.value, { view, base })
     }
     await view.flush()
   }
 
-  async _open() {
+  async _open () {
     await this.base.ready()
     if (this.replicate) await this._replicate()
   }
 
-  async _close() {
+  async _close () {
     if (this.peering) await this.peering.close()
     if (this.swarm) await this.swarm.destroy()
     await this.base.close()
@@ -152,33 +152,33 @@ class AddressBook extends ReadyResource {
 
   // Properties
 
-  get writerKey() {
+  get writerKey () {
     return this.base.local.key
   }
 
-  get key() {
+  get key () {
     return this.base.key
   }
 
-  get discoveryKey() {
+  get discoveryKey () {
     return this.base.discoveryKey
   }
 
-  get encryptionKey() {
+  get encryptionKey () {
     return this.base.encryptionKey
   }
 
-  get writable() {
+  get writable () {
     return this.base.writable
   }
 
-  static deriveAutobaseKey(keyPair, { version = 1 } = {}) {
+  static deriveAutobaseKey (keyPair, { version = 1 } = {}) {
     const publicKey = keyPair && keyPair.publicKey ? keyPair.publicKey : keyPair
     if (!publicKey) throw new Error('Bootstrap keyPair (or public key) is required')
     return Hypercore.key({ version, signers: [{ publicKey }] })
   }
 
-  static async fromSeed(seed, corestore, opts = {}) {
+  static async fromSeed (seed, corestore, opts = {}) {
     if (!seed) throw new Error('seed is required')
     if (!corestore) throw new Error('corestore is required')
     if (!opts.namespace) throw new Error('namespace is required')
@@ -224,7 +224,7 @@ class AddressBook extends ReadyResource {
     return book
   }
 
-  async _enrollLocalWriter({ keyPair, name = null, timeout } = {}) {
+  async _enrollLocalWriter ({ keyPair, name = null, timeout } = {}) {
     if (this.opened === false) await this.ready()
     if (!keyPair) throw new Error('Bootstrap keyPair is required')
 
@@ -239,7 +239,7 @@ class AddressBook extends ReadyResource {
     return writer
   }
 
-  async _waitForBootstrap(timeout = 20000) {
+  async _waitForBootstrap (timeout = 20000) {
     try {
       await waitFor(
         async () => {
@@ -254,7 +254,7 @@ class AddressBook extends ReadyResource {
     }
   }
 
-  static async _authorizeWriter(store, { key, keyPair, encryptionKey, writer }) {
+  static async _authorizeWriter (store, { key, keyPair, encryptionKey, writer }) {
     const authorityStore = store.namespace('writer-enrollment-' + generateId())
     const authority = new AddressBook(authorityStore, {
       key,
@@ -271,7 +271,7 @@ class AddressBook extends ReadyResource {
     }
   }
 
-  async _waitUntilWritable(timeout = 20000) {
+  async _waitUntilWritable (timeout = 20000) {
     if (this.writable) return
 
     let onWritable
@@ -297,7 +297,7 @@ class AddressBook extends ReadyResource {
 
   // Contact CRUD
 
-  async addContact({ name }) {
+  async addContact ({ name }) {
     if (this.opened === false) await this.ready()
     const now = Date.now()
     const id = generateId()
@@ -306,7 +306,7 @@ class AddressBook extends ReadyResource {
     return record
   }
 
-  async editContact(id, updates) {
+  async editContact (id, updates) {
     if (this.opened === false) await this.ready()
     const existing = await this.base.view.get('@addressbook/contacts', { id })
     if (!existing) throw new Error('Contact not found: ' + id)
@@ -320,17 +320,17 @@ class AddressBook extends ReadyResource {
     return record
   }
 
-  async deleteContact(id) {
+  async deleteContact (id) {
     if (this.opened === false) await this.ready()
     await this.base.append(encode('@addressbook/del-contact', { id }))
   }
 
-  async getContact(id) {
+  async getContact (id) {
     if (this.opened === false) await this.ready()
     return this.base.view.get('@addressbook/contacts', { id })
   }
 
-  async listContacts() {
+  async listContacts () {
     if (this.opened === false) await this.ready()
     const results = await this.base.view.find('@addressbook/contacts', {}).toArray()
     return results.sort((a, b) => a.name.localeCompare(b.name))
@@ -338,7 +338,7 @@ class AddressBook extends ReadyResource {
 
   // Address CRUD
 
-  async addAddress(contactId, input) {
+  async addAddress (contactId, input) {
     if (this.opened === false) await this.ready()
     const normalized = normalizeAddressInput(input)
 
@@ -364,7 +364,7 @@ class AddressBook extends ReadyResource {
     return record
   }
 
-  async editAddress(id, updates) {
+  async editAddress (id, updates) {
     if (this.opened === false) await this.ready()
     const existing = await this.base.view.get('@addressbook/addresses', { id })
     if (!existing) throw new Error('Address not found: ' + id)
@@ -385,12 +385,12 @@ class AddressBook extends ReadyResource {
     return record
   }
 
-  async deleteAddress(id) {
+  async deleteAddress (id) {
     if (this.opened === false) await this.ready()
     await this.base.append(encode('@addressbook/del-address', { id }))
   }
 
-  async listAddresses(contactId) {
+  async listAddresses (contactId) {
     if (this.opened === false) await this.ready()
     if (contactId) {
       return this.base.view.find('@addressbook/addresses', { contactId }).toArray()
@@ -400,7 +400,7 @@ class AddressBook extends ReadyResource {
 
   // Search
 
-  async search(query) {
+  async search (query) {
     if (this.opened === false) await this.ready()
     const q = query.toLowerCase()
 
@@ -429,7 +429,7 @@ class AddressBook extends ReadyResource {
       .sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  async _validateAddressRecord(record, { excludeId = null } = {}) {
+  async _validateAddressRecord (record, { excludeId = null } = {}) {
     assertNonEmptyString(record.address, 'Address')
     assertNonEmptyString(record.network, 'Address network')
     assertNonEmptyString(record.type, 'Address type')
@@ -457,13 +457,13 @@ class AddressBook extends ReadyResource {
 
   // Writers
 
-  async addWriter(data) {
+  async addWriter (data) {
     if (typeof data === 'string') data = b4a.from(data, 'hex')
     if (b4a.isBuffer(data)) data = { key: data, name: null }
     await this.base.append(encode('@addressbook/add-writer', data))
   }
 
-  async removeWriter(key) {
+  async removeWriter (key) {
     await this.base.append(
       encode('@addressbook/remove-writer', {
         key: b4a.isBuffer(key) ? key : b4a.from(key, 'hex')
@@ -471,28 +471,28 @@ class AddressBook extends ReadyResource {
     )
   }
 
-  listWriters(query) {
+  listWriters (query) {
     return this.base.view.find('@addressbook/writer', query || {})
   }
 
-  async getWriter(key) {
+  async getWriter (key) {
     return this.base.view.get('@addressbook/writer', { key })
   }
 
   // Mirrors
 
-  async addMirror(key) {
+  async addMirror (key) {
     const keyBuffer = enc.decode(enc.normalize(key))
     await this.base.append(encode('@addressbook/add-mirror', { key: keyBuffer }))
     await this._updatePeering()
   }
 
-  async listMirrors() {
+  async listMirrors () {
     const results = await this.base.view.find('@addressbook/mirrors', {}).toArray()
     return results.map((r) => ({ ...r, key: enc.encode(r.key) }))
   }
 
-  async removeMirror(key) {
+  async removeMirror (key) {
     const keyBuffer = enc.decode(enc.normalize(key))
     await this.base.append(encode('@addressbook/del-mirror', { key: keyBuffer }))
     await this._updatePeering()
@@ -500,7 +500,7 @@ class AddressBook extends ReadyResource {
 
   // Replication
 
-  async _replicate() {
+  async _replicate () {
     await this.base.ready()
     if (this.swarm === null) {
       this.swarm = new Hyperswarm({
@@ -518,7 +518,7 @@ class AddressBook extends ReadyResource {
     await this._updatePeering()
   }
 
-  async _updatePeering() {
+  async _updatePeering () {
     if (!this.swarm) return
     const mirrorList = await this.listMirrors()
     const mirrors = dedupeKeys([
@@ -536,7 +536,7 @@ class AddressBook extends ReadyResource {
     if (mirrors.length > 0) this.peering.addAutobaseBackground(this.base, undefined, { all: true })
   }
 
-  _updatePeeringBackground() {
+  _updatePeeringBackground () {
     if (!this.swarm || this._updatingPeering) return
     this._updatingPeering = this._updatePeering()
       .catch(noop)
@@ -547,14 +547,14 @@ class AddressBook extends ReadyResource {
 
   // Lifecycle
 
-  async suspend() {
+  async suspend () {
     if (this.swarm) {
       await this.swarm.suspend()
       await this.store.suspend()
     }
   }
 
-  async resume() {
+  async resume () {
     if (this.swarm) {
       await this.store.resume()
       await this.swarm.resume()
@@ -562,17 +562,17 @@ class AddressBook extends ReadyResource {
   }
 }
 
-function generateId() {
+function generateId () {
   return b4a.toString(crypto.randomBytes(16), 'hex')
 }
 
-function assertNonEmptyString(value, name) {
+function assertNonEmptyString (value, name) {
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(name + ' is required')
   }
 }
 
-function normalizeContactName(name) {
+function normalizeContactName (name) {
   if (typeof name !== 'string') throw new Error('Contact name is required')
   const trimmed = name.trim()
   if (trimmed.length === 0) throw new Error('Contact name is required')
@@ -582,7 +582,7 @@ function normalizeContactName(name) {
   return trimmed
 }
 
-function normalizeAddressInput(input, { partial = false } = {}) {
+function normalizeAddressInput (input, { partial = false } = {}) {
   if (!input || typeof input !== 'object') throw new Error('Address input is required')
   if ('networks' in input) throw new Error('Use network instead of networks')
 
@@ -610,7 +610,7 @@ function normalizeAddressInput(input, { partial = false } = {}) {
   return result
 }
 
-function normalizeRequiredString(target, input, field, name, { partial, lower = false } = {}) {
+function normalizeRequiredString (target, input, field, name, { partial, lower = false } = {}) {
   if (!(field in input)) {
     if (partial) return
     throw new Error(name + ' is required')
@@ -622,7 +622,7 @@ function normalizeRequiredString(target, input, field, name, { partial, lower = 
   target[field] = lower ? trimmed.toLowerCase() : trimmed
 }
 
-function withTimeout(promise, timeout, label) {
+function withTimeout (promise, timeout, label) {
   if (!timeout || timeout <= 0) return promise
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Timed out waiting for ' + label)), timeout)
@@ -639,7 +639,7 @@ function withTimeout(promise, timeout, label) {
   })
 }
 
-async function waitFor(fn, label, { timeout = 20000, interval = 100 } = {}) {
+async function waitFor (fn, label, { timeout = 20000, interval = 100 } = {}) {
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
     if (await fn()) return
@@ -648,15 +648,15 @@ async function waitFor(fn, label, { timeout = 20000, interval = 100 } = {}) {
   throw new Error('Timed out waiting for ' + label)
 }
 
-function delay(ms) {
+function delay (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function decodeMirrorKey(key) {
+function decodeMirrorKey (key) {
   return b4a.isBuffer(key) ? key : enc.decode(enc.normalize(key))
 }
 
-function dedupeKeys(keys) {
+function dedupeKeys (keys) {
   const seen = new Set()
   const result = []
   for (const key of keys) {
@@ -668,7 +668,7 @@ function dedupeKeys(keys) {
   return result
 }
 
-function noop() {}
+function noop () {}
 
 export { AddressBook, ADDRESS_TYPES }
 export default AddressBook

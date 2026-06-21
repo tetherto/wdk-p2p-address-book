@@ -230,7 +230,7 @@ dispatch.register({
 
 Hyperdispatch.toDisk(hyperdispatch, { esm: true })
 
-function ensureEsmExport(file, exportLine) {
+function ensureEsmExport (file, exportLine) {
   const code = readFileSync(file, 'utf-8')
   if (code.includes(exportLine)) return
   writeFileSync(file, `${code.trimEnd()}\n\n${exportLine}\n`, 'utf-8')

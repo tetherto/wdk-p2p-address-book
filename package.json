@@ -16,11 +16,17 @@
   },
   "scripts": {
     "brittle": "brittle test.js",
-    "lint": "prettier . --check",
-    "format": "prettier . --write",
+    "lint": "standard",
+    "format": "standard --fix",
     "test:bare": "bare tests/bare-runtime.test.mjs",
     "test:p2p": "brittle tests/p2p.test.js",
     "test": "npm run lint && npm run brittle && npm run test:p2p && npm run test:bare"
+  },
+  "standard": {
+    "ignore": [
+      "bare.js",
+      "spec/**"
+    ]
   },
   "license": "Apache-2.0",
   "description": "Distributed address book built on autobase",
@@ -29,8 +35,7 @@
     "blind-peer": "^3.10.0",
     "brittle": "^3.19.0",
     "hyperdht": "^6.23.0",
-    "prettier": "^3.6.2",
-    "prettier-config-holepunch": "^2.0.0",
+    "standard": "^17.1.2",
     "test-tmp": "^1.4.0"
   },
   "dependencies": {
