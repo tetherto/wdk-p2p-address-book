@@ -4,13 +4,26 @@ import HyperDB from 'hyperdb'
 import Hyperswarm from 'hyperswarm'
 import ReadyResource from 'ready-resource'
 import b4a from 'b4a'
-import crypto from 'hypercore-crypto'
 import BlindPeering from 'blind-peering'
 import enc from 'hypercore-id-encoding'
 
 import { Router, encode } from './spec/hyperdispatch/index.js'
 import * as db from './spec/db/index.js'
-import { deriveSeedKey, deriveSeedKeyPair } from './utils.js'
+import {
+  deriveSeedKey,
+  deriveSeedKeyPair,
+  generateId,
+  decodeMirrorKey,
+  dedupeKeys,
+  withTimeout,
+  waitFor,
+  noop
+} from './utils.js'
+import {
+  assertNonEmptyString,
+  normalizeContactName,
+  normalizeAddressInput
+} from './address.utils.js'
 
 const ADDRESS_TYPES = Object.freeze({
   BITCOIN: 'bitcoin',
@@ -31,9 +44,6 @@ const ADDRESS_BOOK_SEED_SALT = 'wdk-addressbook-v1'
 const ENCRYPTION_INFO = 'autobase-encryption'
 const BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 
-// Placeholder pending product guidance.
-const MAX_CONTACT_NAME_LENGTH = 256
-
 class AddressBook extends ReadyResource {
   constructor (corestore, opts = {}) {
     super()
@@ -48,10 +58,17 @@ class AddressBook extends ReadyResource {
     this.mirrors = (opts.mirrors || []).map(decodeMirrorKey)
     this._updatingPeering = null
 
+    // Dispatch handlers run inside Autobase's `apply` against the linearized
+    // log: `data` is the decoded op payload and `context.view` is the HyperDB
+    // view (`context.base` the autobase). They are the authoritative, ordered
+    // mutations — API methods only `append` encoded ops; these apply them.
+
+    /** Upsert a contact (last-write-wins on its id). */
     this.router.add('@wdk-addressbook/put-contact', async (data, context) => {
       await context.view.insert('@wdk-addressbook/contacts', data)
     })
 
+    /** Delete a contact and cascade-delete all of its addresses. */
     this.router.add('@wdk-addressbook/del-contact', async (data, context) => {
       await context.view.delete('@wdk-addressbook/contacts', data)
       const addresses = await context.view
@@ -62,6 +79,10 @@ class AddressBook extends ReadyResource {
       }
     })
 
+    /**
+     * Upsert an address, enforcing uniqueness deterministically across writers:
+     * drop it if the address+network pair (or a duplicate UMA) already exists.
+     */
     this.router.add('@wdk-addressbook/put-address', async (data, context) => {
       const existing = await context.view.find('@wdk-addressbook/addresses', {}).toArray()
 
@@ -80,24 +101,29 @@ class AddressBook extends ReadyResource {
       await context.view.insert('@wdk-addressbook/addresses', data)
     })
 
+    /** Delete a single address by id. */
     this.router.add('@wdk-addressbook/del-address', async (data, context) => {
       await context.view.delete('@wdk-addressbook/addresses', data)
     })
 
+    /** Record a device writer and authorize it on the autobase as an indexer. */
     this.router.add('@wdk-addressbook/add-writer', async (data, context) => {
       await context.view.insert('@wdk-addressbook/writer', data)
       await context.base.addWriter(data.key, { indexer: true })
     })
 
+    /** Remove a device writer record and deauthorize it on the autobase. */
     this.router.add('@wdk-addressbook/remove-writer', async (data, context) => {
       await context.view.delete('@wdk-addressbook/writer', data)
       await context.base.removeWriter(data.key)
     })
 
+    /** Record a blind-peer mirror key (consumed by peering on update). */
     this.router.add('@wdk-addressbook/add-mirror', async (data, context) => {
       await context.view.insert('@wdk-addressbook/mirrors', data)
     })
 
+    /** Remove a blind-peer mirror key. */
     this.router.add('@wdk-addressbook/del-mirror', async (data, context) => {
       await context.view.delete('@wdk-addressbook/mirrors', { key: data.key })
     })
@@ -565,114 +591,6 @@ class AddressBook extends ReadyResource {
     }
   }
 }
-
-function generateId () {
-  return b4a.toString(crypto.randomBytes(16), 'hex')
-}
-
-function assertNonEmptyString (value, name) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new Error(name + ' is required')
-  }
-}
-
-function normalizeContactName (name) {
-  if (typeof name !== 'string') throw new Error('Contact name is required')
-  const trimmed = name.trim()
-  if (trimmed.length === 0) throw new Error('Contact name is required')
-  if (trimmed.length > MAX_CONTACT_NAME_LENGTH) {
-    throw new Error('Contact name must be at most ' + MAX_CONTACT_NAME_LENGTH + ' characters')
-  }
-  return trimmed
-}
-
-function normalizeAddressInput (input, { partial = false } = {}) {
-  if (!input || typeof input !== 'object') throw new Error('Address input is required')
-  if ('networks' in input) throw new Error('Use network instead of networks')
-
-  const result = {}
-  normalizeRequiredString(result, input, 'address', 'Address', { partial })
-  normalizeRequiredString(result, input, 'type', 'Address type', { partial })
-  normalizeRequiredString(result, input, 'network', 'Address network', {
-    partial,
-    lower: true
-  })
-
-  if ('label' in input) {
-    if (input.label === null || input.label === undefined) {
-      result.label = null
-    } else if (typeof input.label === 'string') {
-      const label = input.label.trim()
-      result.label = label.length === 0 ? null : label
-    } else {
-      throw new Error('Address label must be a string')
-    }
-  } else if (!partial) {
-    result.label = null
-  }
-
-  return result
-}
-
-function normalizeRequiredString (target, input, field, name, { partial, lower = false } = {}) {
-  if (!(field in input)) {
-    if (partial) return
-    throw new Error(name + ' is required')
-  }
-  const value = input[field]
-  if (typeof value !== 'string') throw new Error(name + ' is required')
-  const trimmed = value.trim()
-  if (trimmed.length === 0) throw new Error(name + ' is required')
-  target[field] = lower ? trimmed.toLowerCase() : trimmed
-}
-
-function withTimeout (promise, timeout, label) {
-  if (!timeout || timeout <= 0) return promise
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for ' + label)), timeout)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (err) => {
-        clearTimeout(timer)
-        reject(err)
-      }
-    )
-  })
-}
-
-async function waitFor (fn, label, { timeout = 20000, interval = 100 } = {}) {
-  const deadline = Date.now() + timeout
-  while (Date.now() < deadline) {
-    if (await fn()) return
-    await delay(interval)
-  }
-  throw new Error('Timed out waiting for ' + label)
-}
-
-function delay (ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function decodeMirrorKey (key) {
-  return b4a.isBuffer(key) ? key : enc.decode(enc.normalize(key))
-}
-
-function dedupeKeys (keys) {
-  const seen = new Set()
-  const result = []
-  for (const key of keys) {
-    const id = b4a.toString(key, 'hex')
-    if (seen.has(id)) continue
-    seen.add(id)
-    result.push(key)
-  }
-  return result
-}
-
-function noop () {}
 
 export { AddressBook, ADDRESS_TYPES }
 export default AddressBook
