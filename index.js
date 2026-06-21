@@ -10,6 +10,7 @@ import enc from 'hypercore-id-encoding'
 
 import { Router, encode } from './spec/hyperdispatch/index.js'
 import * as db from './spec/db/index.js'
+import { deriveSeedKey, deriveSeedKeyPair } from './utils.js'
 
 const ADDRESS_TYPES = Object.freeze({
   BITCOIN: 'bitcoin',
@@ -24,6 +25,11 @@ const ADDRESS_TYPE_SET = new Set(Object.values(ADDRESS_TYPES))
 
 // Stable per-store device-writer key name (reopen-safe).
 const DEVICE_WRITER_NAME = 'addressbook-writer'
+
+// Embedded seed-derivation labels (prefixed with the per-app namespace).
+const ADDRESS_BOOK_SEED_SALT = 'wdk-addressbook-v1'
+const ENCRYPTION_INFO = 'autobase-encryption'
+const BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 
 // Placeholder pending product guidance.
 const MAX_CONTACT_NAME_LENGTH = 256
@@ -172,25 +178,44 @@ class AddressBook extends ReadyResource {
     return Hypercore.key({ version, signers: [{ publicKey }] })
   }
 
-  static async create(store, opts = {}) {
-    const { keyPair: bootstrapKeyPair, encryptionKey } = opts
-    if (!bootstrapKeyPair) {
-      throw new Error('Bootstrap keyPair is required to create an address book')
-    }
+  static async fromSeed(seed, corestore, opts = {}) {
+    if (!seed) throw new Error('seed is required')
+    if (!corestore) throw new Error('corestore is required')
+    if (!opts.namespace) throw new Error('namespace is required')
 
-    const key = opts.key || AddressBook.deriveAutobaseKey(bootstrapKeyPair)
+    const { namespace } = opts
+    const encryptionKey = deriveSeedKey(seed, {
+      salt: ADDRESS_BOOK_SEED_SALT,
+      info: namespace + ':' + ENCRYPTION_INFO
+    })
+    const bootstrapKeyPair = deriveSeedKeyPair(seed, {
+      salt: ADDRESS_BOOK_SEED_SALT,
+      info: namespace + ':' + BOOTSTRAP_WRITER_INFO
+    })
+    const key = AddressBook.deriveAutobaseKey(bootstrapKeyPair)
+
+    const store = corestore.namespace(namespace)
     const keyPair = await store.createKeyPair(DEVICE_WRITER_NAME)
-    const book = new AddressBook(store, { ...opts, key, keyPair })
+
+    const book = new AddressBook(store, {
+      ...opts,
+      key,
+      keyPair,
+      encryptionKey
+    })
 
     try {
       await book.ready()
-      await AddressBook._authorizeWriter(store, {
-        key,
-        keyPair: bootstrapKeyPair,
-        encryptionKey,
-        writer: { key: book.writerKey, name: opts.name || null }
-      })
-      await book._waitUntilWritable(opts.timeout)
+      if (!book.writable) {
+        // Sync any existing book from mirrors before enrolling, so a restoring
+        // device joins it instead of forking a fresh genesis.
+        if (book.mirrors.length > 0) await book._waitForBootstrap(opts.timeout)
+        await book._enrollLocalWriter({
+          keyPair: bootstrapKeyPair,
+          name: opts.name || null,
+          timeout: opts.timeout
+        })
+      }
     } catch (err) {
       await book.close()
       throw err
@@ -199,15 +224,7 @@ class AddressBook extends ReadyResource {
     return book
   }
 
-  static async open(store, opts = {}) {
-    if (!opts.key) throw new Error('key is required to open an existing address book')
-    const keyPair = opts.keyPair || (await store.createKeyPair(DEVICE_WRITER_NAME))
-    const book = new AddressBook(store, { ...opts, keyPair })
-    await book.ready()
-    return book
-  }
-
-  async enrollLocalWriter({ keyPair, name = null, timeout } = {}) {
+  async _enrollLocalWriter({ keyPair, name = null, timeout } = {}) {
     if (this.opened === false) await this.ready()
     if (!keyPair) throw new Error('Bootstrap keyPair is required')
 
@@ -220,6 +237,21 @@ class AddressBook extends ReadyResource {
     })
     await this._waitUntilWritable(timeout)
     return writer
+  }
+
+  async _waitForBootstrap(timeout = 20000) {
+    try {
+      await waitFor(
+        async () => {
+          await this.base.update()
+          return this.base.length > 0 || this.writable
+        },
+        'address book genesis to sync from mirror',
+        { timeout }
+      )
+    } catch {
+      // No genesis synced: treat as a first/offline device and create one.
+    }
   }
 
   static async _authorizeWriter(store, { key, keyPair, encryptionKey, writer }) {
@@ -240,14 +272,27 @@ class AddressBook extends ReadyResource {
   }
 
   async _waitUntilWritable(timeout = 20000) {
-    await waitFor(
-      async () => {
-        await this.base.update()
-        return this.writable
-      },
-      'local writer to become writable',
-      { timeout }
-    )
+    if (this.writable) return
+
+    let onWritable
+    const writable = new Promise((resolve) => {
+      onWritable = resolve
+      this.base.once('writable', onWritable)
+    })
+
+    // Process locally-available state (e.g. an in-process enrollment) first.
+    await this.base.update()
+    if (this.writable) {
+      this.base.off('writable', onWritable)
+      return
+    }
+
+    try {
+      await withTimeout(writable, timeout, 'local writer to become writable')
+    } catch (err) {
+      this.base.off('writable', onWritable)
+      throw err
+    }
   }
 
   // Contact CRUD
@@ -575,6 +620,23 @@ function normalizeRequiredString(target, input, field, name, { partial, lower = 
   const trimmed = value.trim()
   if (trimmed.length === 0) throw new Error(name + ' is required')
   target[field] = lower ? trimmed.toLowerCase() : trimmed
+}
+
+function withTimeout(promise, timeout, label) {
+  if (!timeout || timeout <= 0) return promise
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out waiting for ' + label)), timeout)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
 }
 
 async function waitFor(fn, label, { timeout = 20000, interval = 100 } = {}) {

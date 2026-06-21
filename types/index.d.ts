@@ -57,6 +57,17 @@ export interface AddressBookOptions {
   optimistic?: boolean
 }
 
+export interface FromSeedOptions {
+  namespace: string
+  mirrors?: Array<string | Uint8Array>
+  bootstrap?: unknown
+  swarm?: unknown
+  relayThrough?: unknown
+  replicate?: boolean
+  name?: string | null
+  timeout?: number
+}
+
 export interface AddContactInput {
   name: string
 }
@@ -79,24 +90,10 @@ export interface EditAddressInput {
   label?: string | null
 }
 
-export interface EnrollLocalWriterOptions {
-  keyPair: { publicKey: Uint8Array; secretKey: Uint8Array }
-  name?: string | null
-  timeout?: number
-}
-
 export default class AddressBook {
   constructor(corestore: unknown, opts?: AddressBookOptions)
 
-  static create(
-    corestore: unknown,
-    opts: AddressBookOptions & { name?: string | null; timeout?: number }
-  ): Promise<AddressBook>
-
-  static open(
-    corestore: unknown,
-    opts: AddressBookOptions & { key: Uint8Array }
-  ): Promise<AddressBook>
+  static fromSeed(seed: Uint8Array, corestore: unknown, opts: FromSeedOptions): Promise<AddressBook>
 
   static deriveAutobaseKey(
     keyPair: { publicKey: Uint8Array } | Uint8Array,
@@ -137,8 +134,6 @@ export default class AddressBook {
   addMirror(key: string): Promise<void>
   listMirrors(): Promise<Mirror[]>
   removeMirror(key: string): Promise<void>
-
-  enrollLocalWriter(options: EnrollLocalWriterOptions): Promise<Writer>
 }
 
 export { AddressBook }

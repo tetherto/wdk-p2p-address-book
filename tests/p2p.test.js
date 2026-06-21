@@ -6,16 +6,15 @@ import b4a from 'b4a'
 import tmp from 'test-tmp'
 
 import AddressBook, { ADDRESS_TYPES } from '../index.js'
-import { deriveSeedKey, deriveSeedKeyPair } from '../utils.js'
+import { deriveSeedKeyPair } from '../utils.js'
 
 const TEST_SEED = b4a.alloc(64, 0xcd)
+const TEST_NAMESPACE = 'test'
 const ADDRESS_BOOK_SEED_SALT = 'wdk-addressbook-v1'
-const ADDRESS_BOOK_ENCRYPTION_INFO = 'autobase-encryption'
 const ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 
 test('p2p restore reads from blind peer when first device is offline', async function (t) {
   const testnet = await createTestnet(3, t)
-  const keys = deriveAddressBookKeys(TEST_SEED)
 
   const mirror = new BlindPeer(await tmp(t), {
     bootstrap: testnet.bootstrap,
@@ -26,15 +25,15 @@ test('p2p restore reads from blind peer when first device is offline', async fun
   await mirror.ready()
   await mirror.listen()
 
-  // Device A: create (bootstrap keypair only seeds genesis + authorizes A's writer).
-  const deviceA = await createDevice(t, AddressBook.create, {
+  // Device A: first device, no mirrors yet, so fromSeed establishes genesis.
+  const deviceA = await createDevice(t, TEST_SEED, {
     bootstrap: testnet.bootstrap,
-    keyPair: keys.keyPair,
-    encryptionKey: keys.encryptionKey,
     name: 'Device A'
   })
-  const bookKey = deviceA.key
-  t.absent(b4a.equals(deviceA.writerKey, keys.keyPair.publicKey), 'A writes as a device writer')
+  t.absent(
+    b4a.equals(deviceA.writerKey, deriveBootstrapKeyPair(TEST_SEED).publicKey),
+    'A writes as a device writer'
+  )
 
   await deviceA.addMirror(mirror.publicKey)
   const alice = await deviceA.addContact({ name: 'Alice' })
@@ -53,13 +52,15 @@ test('p2p restore reads from blind peer when first device is offline', async fun
   }, 'blind peer to mirror device A writer cores')
   await closeIfOpen(deviceA)
 
-  // Device B: open read-only from seed-derived key + mirror, sync, then enroll.
-  const deviceB = await createDevice(t, AddressBook.open, {
-    key: bookKey,
+  // Device B: same seed + mirror; fromSeed restores from the blind peer and
+  // auto-enrolls this device's writer.
+  const deviceB = await createDevice(t, TEST_SEED, {
     bootstrap: testnet.bootstrap,
     mirrors: [mirror.publicKey],
-    encryptionKey: keys.encryptionKey
+    name: 'Device B'
   })
+
+  t.ok(deviceB.writable, 'restored device auto-enrolled its writer')
 
   const restored = await waitFor(async () => {
     await deviceB.base.update()
@@ -75,14 +76,6 @@ test('p2p restore reads from blind peer when first device is offline', async fun
   }, 'second device to restore address through blind peer')
 
   t.is(restoredAddresses[0].network, 'ethereum')
-  t.absent(deviceB.writable, 'restored device still needs writer enrollment')
-
-  const writer = await deviceB.enrollLocalWriter({
-    keyPair: keys.keyPair,
-    name: 'Device B'
-  })
-  t.alike(writer, { key: deviceB.writerKey, name: 'Device B' })
-  t.ok(deviceB.writable, 'second device is writable after local writer enrollment')
 
   await deviceB.editContact(alice.id, { name: 'Alice Updated' })
   const updatedAlice = await deviceB.getContact(alice.id)
@@ -104,23 +97,19 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   await mirror.ready()
   await mirror.listen()
 
-  const user1 = deriveAddressBookKeys(b4a.alloc(64, 0x01))
-  const user2 = deriveAddressBookKeys(b4a.alloc(64, 0x02))
+  const user1Seed = b4a.alloc(64, 0x01)
+  const user2Seed = b4a.alloc(64, 0x02)
   t.absent(
     b4a.equals(
-      AddressBook.deriveAutobaseKey(user1.keyPair),
-      AddressBook.deriveAutobaseKey(user2.keyPair)
+      AddressBook.deriveAutobaseKey(deriveBootstrapKeyPair(user1Seed)),
+      AddressBook.deriveAutobaseKey(deriveBootstrapKeyPair(user2Seed))
     ),
     'different users derive different autobase keys'
   )
 
   // Seed a user's book on a device and push it to the single shared mirror, then go offline.
-  async function seedUser(keys, contactName) {
-    const deviceA = await createDevice(t, AddressBook.create, {
-      bootstrap: testnet.bootstrap,
-      keyPair: keys.keyPair,
-      encryptionKey: keys.encryptionKey
-    })
+  async function seedUser(seed, contactName) {
+    const deviceA = await createDevice(t, seed, { bootstrap: testnet.bootstrap })
     await deviceA.addMirror(mirror.publicKey)
     const contact = await deviceA.addContact({ name: contactName })
     await deviceA.base.update()
@@ -132,26 +121,21 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
       },
       'mirror to hold ' + contactName + ' writer cores'
     )
-    const bookKey = deviceA.key
     await closeIfOpen(deviceA)
-    return { contact, bookKey }
+    return { contact }
   }
 
-  const u1 = await seedUser(user1, 'Alice')
-  const u2 = await seedUser(user2, 'Zoe')
+  const u1 = await seedUser(user1Seed, 'Alice')
+  const u2 = await seedUser(user2Seed, 'Zoe')
 
   // Both users restore from the SAME blind peer key.
-  const restore1 = await createDevice(t, AddressBook.open, {
-    key: u1.bookKey,
+  const restore1 = await createDevice(t, user1Seed, {
     bootstrap: testnet.bootstrap,
-    mirrors: [mirror.publicKey],
-    encryptionKey: user1.encryptionKey
+    mirrors: [mirror.publicKey]
   })
-  const restore2 = await createDevice(t, AddressBook.open, {
-    key: u2.bookKey,
+  const restore2 = await createDevice(t, user2Seed, {
     bootstrap: testnet.bootstrap,
-    mirrors: [mirror.publicKey],
-    encryptionKey: user2.encryptionKey
+    mirrors: [mirror.publicKey]
   })
 
   const r1 = await waitFor(async () => {
@@ -173,24 +157,18 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   t.absent(await restore2.getContact(u1.contact.id), 'user 2 cannot read user 1 data')
 })
 
-async function createDevice(t, factory, opts) {
+async function createDevice(t, seed, opts) {
   const store = new Corestore(await tmp(t))
-  const book = await factory(store, opts)
+  const book = await AddressBook.fromSeed(seed, store, { namespace: TEST_NAMESPACE, ...opts })
   t.teardown(() => closeIfOpen(book))
   return book
 }
 
-function deriveAddressBookKeys(seed) {
-  return {
-    encryptionKey: deriveSeedKey(seed, {
-      salt: ADDRESS_BOOK_SEED_SALT,
-      info: ADDRESS_BOOK_ENCRYPTION_INFO
-    }),
-    keyPair: deriveSeedKeyPair(seed, {
-      salt: ADDRESS_BOOK_SEED_SALT,
-      info: ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
-    })
-  }
+function deriveBootstrapKeyPair(seed, namespace = TEST_NAMESPACE) {
+  return deriveSeedKeyPair(seed, {
+    salt: ADDRESS_BOOK_SEED_SALT,
+    info: namespace + ':' + ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
+  })
 }
 
 function getWriterCores(base) {

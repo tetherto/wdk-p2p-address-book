@@ -12,40 +12,44 @@ npm install @tetherto/wdk-p2p-address-book
 
 ## Example: from a seed to an address book
 
-Seed derivation uses HKDF helpers from `@tetherto/wdk-utils` (mirrored in this repo's `utils.js`). The salt/info labels are chosen at the app layer:
+`AddressBook.fromSeed` is the only entrypoint you need. You give it a wallet seed, a `Corestore`, and a `namespace`; it derives every key (HKDF) and figures out whether this is the first device, a restoring device, or a reopen:
 
 ```js
 import Corestore from 'corestore'
 import AddressBook from '@tetherto/wdk-p2p-address-book'
-import { deriveSeedKey, deriveSeedKeyPair } from '@tetherto/wdk-utils'
 
-const SALT = 'wdk-addressbook-v1'
-
-// `seed` is the BIP-39 seed BYTES (not the mnemonic string)
-const encryptionKey = deriveSeedKey(seed, { salt: SALT, info: 'autobase-encryption' })
-const bootstrapKeyPair = deriveSeedKeyPair(seed, { salt: SALT, info: 'bootstrap-writer' })
-
-// The autobase key is deterministic from the bootstrap keypair — no storage needed.
-const key = AddressBook.deriveAutobaseKey(bootstrapKeyPair)
-
-// First device: create. Establishes genesis and enrolls this device's own writer.
+// `seed` is the BIP-39 seed BYTES (not the mnemonic string).
+// Pass your own Corestore; share a namespaced one if you run other WDK modules,
+// e.g. appStore.namespace('address-book').
 const store = new Corestore('./addressbook')
-const book = await AddressBook.create(store, { keyPair: bootstrapKeyPair, encryptionKey })
+
+// `namespace` scopes the derived book to your app (required). Two apps using the
+// same seed but different namespaces get completely separate address books.
+const book = await AddressBook.fromSeed(seed, store, { namespace: 'tether-wallet' })
 
 // `mirrorKey` is a blind peer's public key (see "How sync works" below) — one
 // static value, the same for every user, shipped in app/BE config. Registering it
 // asks the peer to mirror THIS user's book.
 await book.addMirror(mirrorKey)
 await book.addContact({ name: 'Alice' })
+```
 
-// On another device (restore): pass the same mirrorKey up front — a fresh device
-// can't read the saved mirror record until it has synced from the mirror.
-const restored = await AddressBook.open(store, { key, encryptionKey, mirrors: [mirrorKey] })
-await restored.enrollLocalWriter({ keyPair: bootstrapKeyPair, name: 'iPhone' })
+On another device, pass the blind peer key as `mirrors` so `fromSeed` can pull the existing book down and auto-enroll this device's writer:
+
+```js
+const store = new Corestore('./addressbook')
+const restored = await AddressBook.fromSeed(seed, store, {
+  namespace: 'tether-wallet',
+  mirrors: [mirrorKey]
+})
 await restored.addContact({ name: 'Bob' })
 ```
 
-The bootstrap keypair is used only to seed the genesis and authorize each device's writer — never as a long-lived writer. Conflicts resolve last-write-wins.
+The same seed and namespace always derive the same address book (its autobase key is deterministic), so every device converges on one book. Internally, a per-seed bootstrap keypair seeds the genesis and authorizes each device's own writer — it is never a long-lived writer. Conflicts resolve last-write-wins.
+
+The `namespace` is required and scopes everything: it is mixed into key derivation (per-app book identity) and used to namespace the cores within the `Corestore`, so two different namespaces can safely share one store without colliding. The seed is the per-user secret, and the blind-peer key(s) are the only shared config. You own the `Corestore` lifecycle and call `close()` on it yourself.
+
+> Note: when a device passes `mirrors` but no remote book exists yet, `fromSeed` waits up to `opts.timeout` (default 20s) for the genesis before establishing a fresh one. The very first device can simply omit `mirrors` and call `addMirror` afterward (as above) for instant setup.
 
 ## How sync works
 
@@ -74,7 +78,7 @@ await peer.ready()
 await peer.listen()
 
 // Static public key — put it in app/BE config; the same key serves every user.
-// Clients use it via addMirror(key) and AddressBook.open(store, { ..., mirrors: [key] }).
+// Clients use it via addMirror(key) and AddressBook.fromSeed(seed, store, { namespace, mirrors: [key] }).
 console.log('blind peer key:', idEnc.encode(peer.publicKey))
 ```
 

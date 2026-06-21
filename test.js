@@ -5,11 +5,11 @@ import tmp from 'test-tmp'
 import b4a from 'b4a'
 
 import { encode } from './spec/hyperdispatch/index.js'
-import { deriveSeedKey, deriveSeedKeyPair } from './utils.js'
+import { deriveSeedKeyPair } from './utils.js'
 
 const TEST_SEED = b4a.alloc(64, 0xab)
+const TEST_NAMESPACE = 'test'
 const ADDRESS_BOOK_SEED_SALT = 'wdk-addressbook-v1'
-const ADDRESS_BOOK_ENCRYPTION_INFO = 'autobase-encryption'
 const ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 
 test('basic CRUD - contacts', async function (t) {
@@ -389,24 +389,21 @@ test('search - matches name, address, label', async function (t) {
 })
 
 test('deterministic autobase key from seed', async function (t) {
-  const keyPair = deriveBootstrapKeyPair(TEST_SEED)
-  const encryptionKey = deriveEncryptionKey(TEST_SEED)
-
-  const book1 = await AddressBook.create(new Corestore(await tmp(t)), {
-    keyPair,
-    encryptionKey,
+  const store1 = new Corestore(await tmp(t))
+  const book1 = await AddressBook.fromSeed(TEST_SEED, store1, {
+    namespace: TEST_NAMESPACE,
     replicate: false
   })
   t.teardown(() => book1.close())
 
   t.ok(
-    b4a.equals(book1.key, AddressBook.deriveAutobaseKey(keyPair)),
+    b4a.equals(book1.key, AddressBook.deriveAutobaseKey(deriveBootstrapKeyPair(TEST_SEED))),
     'key matches precomputed deriveAutobaseKey'
   )
 
-  const book2 = await AddressBook.create(new Corestore(await tmp(t)), {
-    keyPair,
-    encryptionKey,
+  const store2 = new Corestore(await tmp(t))
+  const book2 = await AddressBook.fromSeed(TEST_SEED, store2, {
+    namespace: TEST_NAMESPACE,
     replicate: false
   })
   t.teardown(() => book2.close())
@@ -414,17 +411,62 @@ test('deterministic autobase key from seed', async function (t) {
   t.ok(b4a.equals(book1.key, book2.key), 'same seed produces same autobase key')
 })
 
+test('different namespaces derive different books from the same seed', async function (t) {
+  const book1 = await AddressBook.fromSeed(TEST_SEED, new Corestore(await tmp(t)), {
+    namespace: 'tether-wallet',
+    replicate: false
+  })
+  t.teardown(() => book1.close())
+
+  const book2 = await AddressBook.fromSeed(TEST_SEED, new Corestore(await tmp(t)), {
+    namespace: 'other-wallet',
+    replicate: false
+  })
+  t.teardown(() => book2.close())
+
+  t.absent(b4a.equals(book1.key, book2.key), 'namespace isolates the derived address book')
+})
+
+test('two namespaces can share one corestore without colliding', async function (t) {
+  const store = new Corestore(await tmp(t))
+
+  const personal = await AddressBook.fromSeed(TEST_SEED, store, {
+    namespace: 'personal',
+    replicate: false
+  })
+  t.teardown(() => personal.close())
+
+  const business = await AddressBook.fromSeed(TEST_SEED, store, {
+    namespace: 'business',
+    replicate: false
+  })
+  t.teardown(() => business.close())
+
+  t.absent(b4a.equals(personal.key, business.key), 'distinct books')
+  t.absent(
+    b4a.equals(personal.writerKey, business.writerKey),
+    'distinct device-writer cores from the shared store'
+  )
+
+  const alice = await personal.addContact({ name: 'Alice' })
+  await business.addContact({ name: 'Bob' })
+
+  t.is((await personal.listContacts()).length, 1, 'personal book isolated')
+  t.is((await business.listContacts()).length, 1, 'business book isolated')
+  t.absent(await business.getContact(alice.id), 'business cannot see personal data')
+})
+
 test('created device uses a device-specific writer and reopens writable', async function (t) {
-  const keyPair = deriveBootstrapKeyPair(TEST_SEED)
-  const encryptionKey = deriveEncryptionKey(TEST_SEED)
-  const key = AddressBook.deriveAutobaseKey(keyPair)
   const dir = await tmp(t)
 
   const store1 = new Corestore(dir)
-  const book = await AddressBook.create(store1, { keyPair, encryptionKey, replicate: false })
+  const book = await AddressBook.fromSeed(TEST_SEED, store1, {
+    namespace: TEST_NAMESPACE,
+    replicate: false
+  })
   t.ok(book.writable, 'creator is writable')
   t.absent(
-    b4a.equals(book.writerKey, keyPair.publicKey),
+    b4a.equals(book.writerKey, deriveBootstrapKeyPair(TEST_SEED).publicKey),
     'creator writes as a device-specific writer, not the bootstrap identity'
   )
   const alice = await book.addContact({ name: 'Alice' })
@@ -432,35 +474,41 @@ test('created device uses a device-specific writer and reopens writable', async 
   await store1.close()
 
   const store2 = new Corestore(dir)
-  const reopened = await AddressBook.open(store2, { key, encryptionKey, replicate: false })
+  const reopened = await AddressBook.fromSeed(TEST_SEED, store2, {
+    namespace: TEST_NAMESPACE,
+    replicate: false
+  })
   t.teardown(async () => {
     await reopened.close()
     await store2.close()
   })
 
-  t.ok(reopened.writable, 'reopened device is writable without the bootstrap keypair')
+  t.ok(reopened.writable, 'reopened device is writable')
   t.is((await reopened.getContact(alice.id)).name, 'Alice', 'reopened device kept data')
   const bob = await reopened.addContact({ name: 'Bob' })
   t.is(bob.name, 'Bob', 'reopened device can keep writing')
 })
 
+let seedCounter = 0
+
 async function createBook(t, opts) {
-  const dir = await tmp(t)
-  const book = new AddressBook(new Corestore(dir), { replicate: false, ...opts })
-  await book.ready()
+  const store = new Corestore(await tmp(t))
+  const seed = b4a.alloc(64, seedCounter++ % 256)
+  const book = await AddressBook.fromSeed(seed, store, {
+    namespace: TEST_NAMESPACE,
+    replicate: false,
+    ...opts
+  })
+  t.teardown(async () => {
+    await book.close()
+    await store.close()
+  })
   return book
 }
 
-function deriveEncryptionKey(seed) {
-  return deriveSeedKey(seed, {
-    salt: ADDRESS_BOOK_SEED_SALT,
-    info: ADDRESS_BOOK_ENCRYPTION_INFO
-  })
-}
-
-function deriveBootstrapKeyPair(seed) {
+function deriveBootstrapKeyPair(seed, namespace = TEST_NAMESPACE) {
   return deriveSeedKeyPair(seed, {
     salt: ADDRESS_BOOK_SEED_SALT,
-    info: ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
+    info: namespace + ':' + ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
   })
 }
