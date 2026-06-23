@@ -35,6 +35,7 @@
     "blind-peer": "^3.10.0",
     "brittle": "^3.19.0",
     "hyperdht": "^6.23.0",
+    "log-update": "^8.0.0",
     "standard": "^17.1.2",
     "test-tmp": "^1.4.0"
   },

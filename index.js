@@ -71,8 +71,9 @@ class AddressBook extends ReadyResource {
     /** Delete a contact and cascade-delete all of its addresses. */
     this.router.add('@wdk-addressbook/del-contact', async (data, context) => {
       await context.view.delete('@wdk-addressbook/contacts', data)
-      for await (const addr of context.view.find('@wdk-addressbook/addresses', {
-        contactId: data.id
+      for await (const addr of context.view.find('@wdk-addressbook/addresses-by-contact', {
+        gte: { contactId: data.id },
+        lte: { contactId: data.id }
       })) {
         await context.view.delete('@wdk-addressbook/addresses', { id: addr.id })
       }
@@ -422,7 +423,10 @@ class AddressBook extends ReadyResource {
   async listAddresses (contactId) {
     if (this.opened === false) await this.ready()
     if (contactId) {
-      return this.base.view.find('@wdk-addressbook/addresses', { contactId }).toArray()
+      return this.base.view.find('@wdk-addressbook/addresses-by-contact', {
+        gte: { contactId },
+        lte: { contactId }
+      }).toArray()
     }
     return this.base.view.find('@wdk-addressbook/addresses', {}).toArray()
   }
