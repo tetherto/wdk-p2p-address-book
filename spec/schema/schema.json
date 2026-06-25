@@ -5,7 +5,7 @@
       "name": "contact",
       "namespace": "wdk-addressbook",
       "compact": false,
-      "flagsPosition": -1,
+      "flagsPosition": 2,
       "fields": [
         {
           "name": "id",
@@ -16,6 +16,11 @@
         {
           "name": "name",
           "required": true,
+          "type": "string",
+          "version": 1
+        },
+        {
+          "name": "username",
           "type": "string",
           "version": 1
         },

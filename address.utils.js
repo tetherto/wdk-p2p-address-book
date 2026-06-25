@@ -6,6 +6,13 @@ export function assertNonEmptyString (value, name) {
   }
 }
 
+export function normalizeUsername (username) {
+  if (username === null || username === undefined) return null
+  if (typeof username !== 'string') throw new Error('Contact username must be a string')
+  const trimmed = username.trim()
+  return trimmed.length === 0 ? null : trimmed
+}
+
 export function normalizeContactName (name) {
   if (typeof name !== 'string') throw new Error('Contact name is required')
   const trimmed = name.trim()

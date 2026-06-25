@@ -20,6 +20,7 @@ export const ADDRESS_TYPES: Readonly<{
 export interface Contact {
   id: string
   name: string
+  username?: string
   createdAt: number
   updatedAt: number
 }
@@ -70,6 +71,7 @@ export interface FromSeedOptions {
 
 export interface AddContactInput {
   name: string
+  username?: string | null
 }
 
 export interface AddAddressInput {
@@ -81,6 +83,7 @@ export interface AddAddressInput {
 
 export interface EditContactInput {
   name?: string
+  username?: string | null
 }
 
 export interface EditAddressInput {
