@@ -20,7 +20,7 @@ export const ADDRESS_TYPES: Readonly<{
 export interface Contact {
   id: string
   name: string
-  username?: string
+  username?: string | null
   createdAt: number
   updatedAt: number
 }
