@@ -22,6 +22,7 @@ import {
 import {
   assertNonEmptyString,
   normalizeContactName,
+  normalizeUsername,
   normalizeAddressInput
 } from './address.utils.js'
 
@@ -327,11 +328,17 @@ class AddressBook extends ReadyResource {
 
   // Contact CRUD
 
-  async addContact ({ name }) {
+  async addContact ({ name, username = null }) {
     if (this.opened === false) await this.ready()
     const now = Date.now()
     const id = generateId()
-    const record = { id, name: normalizeContactName(name), createdAt: now, updatedAt: now }
+    const record = {
+      id,
+      name: normalizeContactName(name),
+      username: normalizeUsername(username),
+      createdAt: now,
+      updatedAt: now
+    }
     await this.base.append(encode('@wdk-addressbook/put-contact', record))
     return record
   }
@@ -343,6 +350,9 @@ class AddressBook extends ReadyResource {
     const record = {
       id: existing.id,
       name: updates.name !== undefined ? normalizeContactName(updates.name) : existing.name,
+      username: updates.username !== undefined
+        ? normalizeUsername(updates.username)
+        : (existing.username ?? null),
       createdAt: existing.createdAt,
       updatedAt: Date.now()
     }

@@ -16,26 +16,34 @@ const encoding0 = {
   preencode(state, m) {
     c.string.preencode(state, m.id)
     c.string.preencode(state, m.name)
+    state.end++ // max flag is 1 so always one byte
+
+    if (m.username) c.string.preencode(state, m.username)
     c.int.preencode(state, m.createdAt)
     c.int.preencode(state, m.updatedAt)
   },
   encode(state, m) {
+    const flags = m.username ? 1 : 0
+
     c.string.encode(state, m.id)
     c.string.encode(state, m.name)
+    c.uint.encode(state, flags)
+
+    if (m.username) c.string.encode(state, m.username)
     c.int.encode(state, m.createdAt)
     c.int.encode(state, m.updatedAt)
   },
   decode(state) {
     const r0 = c.string.decode(state)
     const r1 = c.string.decode(state)
-    const r2 = c.int.decode(state)
-    const r3 = c.int.decode(state)
+    const flags = c.uint.decode(state)
 
     return {
       id: r0,
       name: r1,
-      createdAt: r2,
-      updatedAt: r3
+      username: (flags & 1) !== 0 ? c.string.decode(state) : null,
+      createdAt: c.int.decode(state),
+      updatedAt: c.int.decode(state)
     }
   }
 }
@@ -160,24 +168,32 @@ const encoding6 = encoding5
 const encoding7 = {
   preencode(state, m) {
     c.string.preencode(state, m.name)
+    state.end++ // max flag is 1 so always one byte
+
+    if (m.username) c.string.preencode(state, m.username)
     c.int.preencode(state, m.createdAt)
     c.int.preencode(state, m.updatedAt)
   },
   encode(state, m) {
+    const flags = m.username ? 1 : 0
+
     c.string.encode(state, m.name)
+    c.uint.encode(state, flags)
+
+    if (m.username) c.string.encode(state, m.username)
     c.int.encode(state, m.createdAt)
     c.int.encode(state, m.updatedAt)
   },
   decode(state) {
     const r1 = c.string.decode(state)
-    const r2 = c.int.decode(state)
-    const r3 = c.int.decode(state)
+    const flags = c.uint.decode(state)
 
     return {
       id: null,
       name: r1,
-      createdAt: r2,
-      updatedAt: r3
+      username: (flags & 1) !== 0 ? c.string.decode(state) : null,
+      createdAt: c.int.decode(state),
+      updatedAt: c.int.decode(state)
     }
   }
 }

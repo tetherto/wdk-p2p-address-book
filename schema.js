@@ -22,6 +22,10 @@ ns.register({
       required: true
     },
     {
+      name: 'username',
+      type: 'string'
+    },
+    {
       name: 'createdAt',
       type: 'int',
       required: true
