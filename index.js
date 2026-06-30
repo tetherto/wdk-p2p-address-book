@@ -172,6 +172,15 @@ class AddressBook extends ReadyResource {
   }
 
   async _close () {
+    // Flush pending autobase work before close, else close() can throw
+    // "Cannot close while sessions are open" (it races the post-enroll update).
+    if (this.base) {
+      try {
+        await this.base.update()
+      } catch {
+        // ignore: flush is best-effort, close must proceed anyway
+      }
+    }
     if (this.peering) await this.peering.close()
     if (this.swarm) await this.swarm.destroy()
     if (this.base) await this.base.close()
