@@ -5,6 +5,7 @@ import Hyperswarm from 'hyperswarm'
 import ReadyResource from 'ready-resource'
 import b4a from 'b4a'
 import BlindPeering from 'blind-peering'
+import Corestore from 'corestore'
 import enc from 'hypercore-id-encoding'
 
 import { Router, encode } from './spec/hyperdispatch/index.js'
@@ -261,6 +262,26 @@ class AddressBook extends ReadyResource {
       throw err
     }
 
+    return book
+  }
+
+  /**
+   * Generic worklet-module factory (wdk-worklet-bundler contract: `(ctx) => instance`).
+   * Builds the Corestore from `config.storagePath`, derives the book from the seed,
+   * and closes the store together with the book.
+   */
+  static async createWorkletModule ({ seed, config }) {
+    const { storagePath, ...opts } = config || {}
+    const store = new Corestore(storagePath)
+    let book
+    try {
+      book = await AddressBook.fromSeed(seed, store, opts)
+    } catch (err) {
+      await store.close().catch(() => {})
+      throw err
+    }
+    const close = book.close.bind(book)
+    book.close = async () => { await close(); await store.close() }
     return book
   }
 
