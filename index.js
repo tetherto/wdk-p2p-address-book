@@ -7,6 +7,7 @@ import b4a from 'b4a'
 import BlindPeering from 'blind-peering'
 import Corestore from 'corestore'
 import enc from 'hypercore-id-encoding'
+import { sha256 } from '@noble/hashes/sha2.js'
 
 import { Router, encode } from './spec/hyperdispatch/index.js'
 import * as db from './spec/db/index.js'
@@ -245,17 +246,25 @@ class AddressBook extends ReadyResource {
       encryptionKey
     })
 
+    // Stashed so create() or addMirror() can enroll after construct.
+    book._bootstrapKeyPair = bootstrapKeyPair
+    book._enrollName = opts.name || null
+    book._enrollTimeout = opts.timeout
+    book._create = opts.create
+
     try {
       await book.ready()
       if (!book.writable) {
-        // Sync any existing book from mirrors before enrolling, so a restoring
-        // device joins it instead of forking a fresh genesis.
-        if (book.mirrors.length > 0) await book._waitForBootstrap(opts.timeout)
-        await book._enrollLocalWriter({
-          keyPair: bootstrapKeyPair,
-          name: opts.name || null,
-          timeout: opts.timeout
-        })
+        if (opts.create === true) {
+          // Confirmed-fresh: enroll now.
+          await book._enrollLocalWriter({ keyPair: bootstrapKeyPair, name: opts.name || null, timeout: opts.timeout })
+        } else if (opts.create === false) {
+          // Deferred: stay read-only until create()/addMirror() syncs first
+        } else {
+          // Legacy: sync from mirrors, then enroll.
+          if (book.mirrors.length > 0) await book._waitForBootstrap(opts.timeout)
+          await book._enrollLocalWriter({ keyPair: bootstrapKeyPair, name: opts.name || null, timeout: opts.timeout })
+        }
       }
     } catch (err) {
       await book.close()
@@ -266,13 +275,17 @@ class AddressBook extends ReadyResource {
   }
 
   /**
-   * Generic worklet-module factory (wdk-worklet-bundler contract: `(ctx) => instance`).
-   * Builds the Corestore from `config.storagePath`, derives the book from the seed,
-   * and closes the store together with the book.
+   * Worklet-module factory for the bundler. Isolates each user under a seed-derived
+   * subdir of config.storagePath so two seeds never share a corestore on one device.
    */
   static async createWorkletModule ({ seed, config }) {
     const { storagePath, ...opts } = config || {}
-    const store = new Corestore(storagePath)
+    // Per-user isolation: a one-way subdir keyed on the seed.
+    const scope = b4a.toString(
+      deriveSeedKey(seed, { salt: ADDRESS_BOOK_SEED_SALT, info: (opts.namespace ?? 'default') + ':storage-scope' }),
+      'hex'
+    ).slice(0, 32)
+    const store = new Corestore(storagePath.replace(/\/+$/, '') + '/' + scope)
     let book
     try {
       book = await AddressBook.fromSeed(seed, store, opts)
@@ -283,6 +296,41 @@ class AddressBook extends ReadyResource {
     const close = book.close.bind(book)
     book.close = async () => { await close(); await store.close() }
     return book
+  }
+
+  /**
+   * Rank a mirror pool for this book by HRW and return the top `n`. Deterministic and
+   * recomputable anywhere from the autobase key, with minimal churn if the pool changes.
+   *
+   * @param {Uint8Array | string} autobaseKey - book's autobase key, hex or buffer
+   * @param {Array<string | Uint8Array>} pool - candidate mirror keys
+   * @param {number} [n=1] - how many to return, highest-ranked first
+   * @returns {Array<string | Uint8Array>} up to `n` pool entries, ranked
+   */
+  static selectMirrors (autobaseKey, pool, n = 1) {
+    if (!pool || pool.length === 0 || n <= 0) return []
+    const keyBuf = b4a.isBuffer(autobaseKey) ? autobaseKey : b4a.from(autobaseKey, 'hex')
+    const scored = pool.map((mirror) => {
+      const mk = decodeMirrorKey(mirror) // raw key bytes — must match what the BE hashes
+      return { mirror, mk, score: b4a.from(sha256(b4a.concat([keyBuf, mk]))) }
+    })
+    // Score desc; tie -> larger key, so the order is input-order-independent.
+    scored.sort((a, b) => b4a.compare(b.score, a.score) || b4a.compare(b.mk, a.mk))
+    return scored.slice(0, n).map((s) => s.mirror)
+  }
+
+  /**
+   * Public identity for the host after construct: the public autobaseKey and whether this
+   * device can write yet. The encryption key is never exposed.
+   *
+   * @returns {Promise<{ autobaseKey: string, writable: boolean }>}
+   */
+  async getInfo () {
+    if (this.opened === false) await this.ready()
+    return {
+      autobaseKey: b4a.toString(this.key, 'hex'),
+      writable: this.writable
+    }
   }
 
   async _enrollLocalWriter ({ keyPair, name = null, timeout } = {}) {
@@ -300,6 +348,33 @@ class AddressBook extends ReadyResource {
     return writer
   }
 
+  /**
+   * Enroll this device's writer if not already writable. Syncs an existing book from
+   * mirrors first so a restorer joins it instead of forking. For a known-existing book
+   * that can't sync, stays deferred and throws rather than self-enrolling into a fork.
+   * New books enroll only via create() or create: true.
+   */
+  async _ensureEnrolled ({ bootstrap = false } = {}) {
+    if (this.writable) return
+    if (!this._bootstrapKeyPair) throw new Error('address book was not constructed from a seed; cannot enroll')
+    if (bootstrap && this.mirrors.length > 0) {
+      const synced = await this._waitForBootstrap(this._enrollTimeout)
+      if (!synced && this._create === false) {
+        throw new Error('could not sync the existing address book from its mirror(s); retry addMirror() once a mirror is reachable')
+      }
+    }
+    await this._enrollLocalWriter({ keyPair: this._bootstrapKeyPair, name: this._enrollName, timeout: this._enrollTimeout })
+  }
+
+  /**
+   * Enroll a deferred book as a brand-new one, without waiting to sync. Use only when
+   * no existing book could exist to restore.
+   */
+  async create () {
+    await this._ensureEnrolled({ bootstrap: false })
+  }
+
+  // Returns true if an existing book synced from a mirror, false on timeout.
   async _waitForBootstrap (timeout = 20000) {
     try {
       await waitFor(
@@ -310,8 +385,9 @@ class AddressBook extends ReadyResource {
         'address book genesis to sync from mirror',
         { timeout }
       )
+      return true
     } catch {
-      // No genesis synced: treat as a first/offline device and create one.
+      return false
     }
   }
 
@@ -554,9 +630,27 @@ class AddressBook extends ReadyResource {
 
   // Mirrors
 
-  async addMirror (key) {
-    const keyBuffer = enc.decode(enc.normalize(key))
-    await this.base.append(encode('@wdk-addressbook/add-mirror', { key: keyBuffer }))
+  /**
+   * Register + peer with blind-peer mirrors. `addMirror(key)` adds one; `addMirror(pool, n)`
+   * ranks the pool by HRW and adds the top `n`, so the host can forward the BE pool without
+   * the autobase key. A deferred book syncs an existing book first, then enrolls into it.
+   *
+   * @param {string | Uint8Array | Array<string | Uint8Array>} key - a mirror key or a pool
+   * @param {number} [n=1] - when a pool is given, how many to select
+   */
+  async addMirror (key, n = 1) {
+    const selected = Array.isArray(key) ? AddressBook.selectMirrors(this.key, key, n) : [key]
+    const keyBuffers = selected.map((k) => enc.decode(enc.normalize(k)))
+    if (keyBuffers.length === 0) return
+
+    for (const keyBuffer of keyBuffers) {
+      if (!this.mirrors.some((m) => b4a.equals(m, keyBuffer))) this.mirrors.push(keyBuffer)
+    }
+    await this._updatePeering()
+    await this._ensureEnrolled({ bootstrap: true })
+    for (const keyBuffer of keyBuffers) {
+      await this.base.append(encode('@wdk-addressbook/add-mirror', { key: keyBuffer }))
+    }
     await this._updatePeering()
   }
 

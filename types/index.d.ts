@@ -61,6 +61,7 @@ export interface AddressBookOptions {
 export interface FromSeedOptions {
   namespace: string
   mirrors?: Array<string | Uint8Array>
+  create?: boolean
   bootstrap?: unknown
   swarm?: unknown
   relayThrough?: unknown
@@ -103,6 +104,10 @@ export default class AddressBook {
     opts?: { version?: number }
   ): Uint8Array
 
+  static createWorkletModule(ctx: { seed: Uint8Array; config: FromSeedOptions & { storagePath: string } }): Promise<AddressBook>
+
+  static selectMirrors(autobaseKey: Uint8Array | string, pool: Array<string | Uint8Array>, n?: number): Array<string | Uint8Array>
+
   readonly writerKey: Uint8Array
   readonly key: Uint8Array
   readonly discoveryKey: Uint8Array
@@ -113,6 +118,8 @@ export default class AddressBook {
   close(): Promise<void>
   suspend(): Promise<void>
   resume(): Promise<void>
+  getInfo(): Promise<{ autobaseKey: string; writable: boolean }>
+  create(): Promise<void>
 
   addContact(input: AddContactInput): Promise<Contact>
   editContact(id: string, updates: EditContactInput): Promise<Contact>
@@ -134,7 +141,8 @@ export default class AddressBook {
   listWriters(query?: Partial<Writer>): unknown
   getWriter(key: Uint8Array): Promise<Writer | null>
 
-  addMirror(key: string): Promise<void>
+  addMirror(key: string | Uint8Array): Promise<void>
+  addMirror(pool: Array<string | Uint8Array>, n?: number): Promise<void>
   listMirrors(): Promise<Mirror[]>
   removeMirror(key: string): Promise<void>
 }
