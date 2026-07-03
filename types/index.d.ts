@@ -146,4 +146,32 @@ export default class AddressBook {
   removeMirror(key: string): Promise<void>
 }
 
+/**
+ * Host-side (app) API of the address book module, as called over the worklet module
+ * bridge — e.g. `useModule<AddressBookApi>('addressBook')`. Every method is async and
+ * takes/returns JSON-serializable values; mirror keys are hex/z-base32 strings. The
+ * `'update'` event is delivered via the module proxy's `on('update', ...)`, not here.
+ */
+export interface AddressBookApi {
+  getInfo(): Promise<{ autobaseKey: string; writable: boolean }>
+  create(): Promise<void>
+
+  addContact(input: AddContactInput): Promise<Contact>
+  editContact(id: string, updates: EditContactInput): Promise<Contact>
+  deleteContact(id: string): Promise<void>
+  getContact(id: string): Promise<Contact | null>
+  listContacts(): Promise<Contact[]>
+
+  addAddress(contactId: string, input: AddAddressInput): Promise<Address>
+  editAddress(id: string, updates: EditAddressInput): Promise<Address>
+  deleteAddress(id: string): Promise<void>
+  listAddresses(contactId?: string): Promise<Address[]>
+  search(query: string): Promise<Contact[]>
+
+  addMirror(key: string): Promise<void>
+  addMirror(pool: string[], n?: number): Promise<void>
+  listMirrors(): Promise<Mirror[]>
+  removeMirror(key: string): Promise<void>
+}
+
 export { AddressBook }
