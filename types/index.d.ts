@@ -61,7 +61,6 @@ export interface AddressBookOptions {
 export interface FromSeedOptions {
   namespace: string
   mirrors?: Array<string | Uint8Array>
-  create?: boolean
   bootstrap?: unknown
   swarm?: unknown
   relayThrough?: unknown

@@ -246,26 +246,14 @@ class AddressBook extends ReadyResource {
       encryptionKey
     })
 
-    // Stashed so create() or addMirror() can enroll after construct.
+    // Construct is read-only; enroll explicitly via create() for a new book or addMirror()
+    // to sync and join an existing one. A reopened book with a persisted writer is writable.
     book._bootstrapKeyPair = bootstrapKeyPair
     book._enrollName = opts.name || null
     book._enrollTimeout = opts.timeout
-    book._create = opts.create
 
     try {
       await book.ready()
-      if (!book.writable) {
-        if (opts.create === true) {
-          // Confirmed-fresh: enroll now.
-          await book._enrollLocalWriter({ keyPair: bootstrapKeyPair, name: opts.name || null, timeout: opts.timeout })
-        } else if (opts.create === false) {
-          // Deferred: stay read-only until create()/addMirror() syncs first
-        } else {
-          // Legacy: sync from mirrors, then enroll.
-          if (book.mirrors.length > 0) await book._waitForBootstrap(opts.timeout)
-          await book._enrollLocalWriter({ keyPair: bootstrapKeyPair, name: opts.name || null, timeout: opts.timeout })
-        }
-      }
     } catch (err) {
       await book.close()
       throw err
@@ -349,17 +337,16 @@ class AddressBook extends ReadyResource {
   }
 
   /**
-   * Enroll this device's writer if not already writable. Syncs an existing book from
-   * mirrors first so a restorer joins it instead of forking. For a known-existing book
-   * that can't sync, stays deferred and throws rather than self-enrolling into a fork.
-   * New books enroll only via create() or create: true.
+   * Enroll this device's writer if not already writable. With bootstrap, sync an existing
+   * book from mirrors first and throw if it can't — join-only, never fork. Without
+   * bootstrap, enroll a fresh book. Used by addMirror() and create() respectively.
    */
   async _ensureEnrolled ({ bootstrap = false } = {}) {
     if (this.writable) return
     if (!this._bootstrapKeyPair) throw new Error('address book was not constructed from a seed; cannot enroll')
-    if (bootstrap && this.mirrors.length > 0) {
-      const synced = await this._waitForBootstrap(this._enrollTimeout)
-      if (!synced && this._create === false) {
+    if (bootstrap) {
+      const synced = this.mirrors.length > 0 && await this._waitForBootstrap(this._enrollTimeout)
+      if (!synced) {
         throw new Error('could not sync the existing address book from its mirror(s); retry addMirror() once a mirror is reachable')
       }
     }
@@ -367,8 +354,8 @@ class AddressBook extends ReadyResource {
   }
 
   /**
-   * Enroll a deferred book as a brand-new one, without waiting to sync. Use only when
-   * no existing book could exist to restore.
+   * Enroll as a brand-new book, without waiting to sync. Use only when no existing book
+   * could exist to restore; otherwise use addMirror() to sync and join.
    */
   async create () {
     await this._ensureEnrolled({ bootstrap: false })

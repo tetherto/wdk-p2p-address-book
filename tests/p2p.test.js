@@ -25,11 +25,12 @@ test('p2p restore reads from blind peer when first device is offline', async fun
   await mirror.ready()
   await mirror.listen()
 
-  // Device A: first device, no mirrors yet, so fromSeed establishes genesis.
+  // Device A: first device. Construct is read-only; create() establishes the genesis.
   const deviceA = await createDevice(t, TEST_SEED, {
     bootstrap: testnet.bootstrap,
     name: 'Device A'
   })
+  await deviceA.create()
   t.absent(
     b4a.equals(deviceA.writerKey, deriveBootstrapKeyPair(TEST_SEED).publicKey),
     'A writes as a device writer'
@@ -52,15 +53,15 @@ test('p2p restore reads from blind peer when first device is offline', async fun
   }, 'blind peer to mirror device A writer cores')
   await closeIfOpen(deviceA)
 
-  // Device B: same seed + mirror; fromSeed restores from the blind peer and
-  // auto-enrolls this device's writer.
+  // Device B: same seed. Construct read-only, then addMirror syncs from the blind peer
+  // and enrolls this device's writer (joins A's book).
   const deviceB = await createDevice(t, TEST_SEED, {
     bootstrap: testnet.bootstrap,
-    mirrors: [mirror.publicKey],
     name: 'Device B'
   })
+  await deviceB.addMirror(mirror.publicKey)
 
-  t.ok(deviceB.writable, 'restored device auto-enrolled its writer')
+  t.ok(deviceB.writable, 'restored device enrolled its writer')
 
   const restored = await waitFor(async () => {
     await deviceB.base.update()
@@ -110,6 +111,7 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   // Seed a user's book on a device and push it to the single shared mirror, then go offline.
   async function seedUser (seed, contactName) {
     const deviceA = await createDevice(t, seed, { bootstrap: testnet.bootstrap })
+    await deviceA.create()
     await deviceA.addMirror(mirror.publicKey)
     const contact = await deviceA.addContact({ name: contactName })
     await deviceA.base.update()

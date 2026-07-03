@@ -448,6 +448,8 @@ test('two namespaces can share one corestore without colliding', async function 
     'distinct device-writer cores from the shared store'
   )
 
+  await personal.create()
+  await business.create()
   const alice = await personal.addContact({ name: 'Alice' })
   await business.addContact({ name: 'Bob' })
 
@@ -464,7 +466,8 @@ test('created device uses a device-specific writer and reopens writable', async 
     namespace: TEST_NAMESPACE,
     replicate: false
   })
-  t.ok(book.writable, 'creator is writable')
+  await book.create()
+  t.ok(book.writable, 'creator is writable after create()')
   t.absent(
     b4a.equals(book.writerKey, deriveBootstrapKeyPair(TEST_SEED).publicKey),
     'creator writes as a device-specific writer, not the bootstrap identity'
@@ -499,6 +502,7 @@ async function createBook (t, opts) {
     replicate: false,
     ...opts
   })
+  await book.create() // construct is read-only; enroll a fresh book for these tests
   t.teardown(async () => {
     await book.close()
     await store.close()
