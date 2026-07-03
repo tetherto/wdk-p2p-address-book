@@ -42,6 +42,11 @@ export interface Writer {
 }
 
 export interface Mirror {
+  key: Uint8Array
+}
+
+/** `Mirror` as received over the worklet bridge — `Uint8Array` auto-normalized to hex. */
+export interface MirrorApi {
   key: string
 }
 
@@ -140,8 +145,8 @@ export default class AddressBook {
   listWriters(query?: Partial<Writer>): unknown
   getWriter(key: Uint8Array): Promise<Writer | null>
 
-  addMirror(key: string | Uint8Array): Promise<void>
-  addMirror(pool: Array<string | Uint8Array>, n?: number): Promise<void>
+  addMirror(key: string | Uint8Array): Promise<Array<string | Uint8Array>>
+  addMirror(pool: Array<string | Uint8Array>, n?: number): Promise<Array<string | Uint8Array>>
   listMirrors(): Promise<Mirror[]>
   removeMirror(key: string): Promise<void>
 }
@@ -149,8 +154,9 @@ export default class AddressBook {
 /**
  * Host-side (app) API of the address book module, as called over the worklet module
  * bridge — e.g. `useModule<AddressBookApi>('addressBook')`. Every method is async and
- * takes/returns JSON-serializable values; mirror keys are hex/z-base32 strings. The
- * `'update'` event is delivered via the module proxy's `on('update', ...)`, not here.
+ * takes/returns JSON-serializable values. Inputs are hex/z-base32 strings; returned
+ * `Uint8Array` values are auto-normalized to hex by the RPC layer. The `'update'` event
+ * is delivered via the module proxy's `on('update', ...)`, not here.
  */
 export interface AddressBookApi {
   getInfo(): Promise<{ autobaseKey: string; writable: boolean }>
@@ -168,9 +174,9 @@ export interface AddressBookApi {
   listAddresses(contactId?: string): Promise<Address[]>
   search(query: string): Promise<Contact[]>
 
-  addMirror(key: string): Promise<void>
-  addMirror(pool: string[], n?: number): Promise<void>
-  listMirrors(): Promise<Mirror[]>
+  addMirror(key: string): Promise<string[]>
+  addMirror(pool: string[], n?: number): Promise<string[]>
+  listMirrors(): Promise<MirrorApi[]>
   removeMirror(key: string): Promise<void>
 }
 

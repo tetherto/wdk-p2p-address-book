@@ -29,7 +29,8 @@ const book = await AddressBook.fromSeed(seed, store, { namespace: 'tether-wallet
 
 // `mirrorKey` is a blind peer's public key (see "How sync works" below) — one
 // static value, the same for every user, shipped in app/BE config. Registering it
-// asks the peer to mirror THIS user's book.
+// asks the peer to mirror THIS user's book. `addMirror` resolves with the mirror
+// key(s) selected, as given — an array, most useful when passing a pool.
 await book.addMirror(mirrorKey)
 await book.addContact({ name: 'Alice' })
 ```

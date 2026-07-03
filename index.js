@@ -624,11 +624,14 @@ class AddressBook extends ReadyResource {
    *
    * @param {string | Uint8Array | Array<string | Uint8Array>} key - a mirror key or a pool
    * @param {number} [n=1] - when a pool is given, how many to select
+   * @returns {Promise<Array<string | Uint8Array>>} the mirror key(s) selected, as given —
+   *   a pass-through, like `selectMirrors`. Always an array, one entry for the single-key
+   *   form. Returned even when already registered from a prior call.
    */
   async addMirror (key, n = 1) {
     const selected = Array.isArray(key) ? AddressBook.selectMirrors(this.key, key, n) : [key]
-    const keyBuffers = selected.map((k) => enc.decode(enc.normalize(k)))
-    if (keyBuffers.length === 0) return
+    if (selected.length === 0) return []
+    const keyBuffers = selected.map((k) => enc.decode(k))
 
     for (const keyBuffer of keyBuffers) {
       if (!this.mirrors.some((m) => b4a.equals(m, keyBuffer))) this.mirrors.push(keyBuffer)
@@ -639,15 +642,20 @@ class AddressBook extends ReadyResource {
       await this.base.append(encode('@wdk-addressbook/add-mirror', { key: keyBuffer }))
     }
     await this._updatePeering()
+    return selected
   }
 
+  /**
+   * @returns {Promise<Array<{ key: Uint8Array }>>} registered mirrors, key as raw bytes —
+   *   same pass-through style as `selectMirrors`. The worklet bridge auto-normalizes
+   *   `Uint8Array` to hex.
+   */
   async listMirrors () {
-    const results = await this.base.view.find('@wdk-addressbook/mirrors', {}).toArray()
-    return results.map((r) => ({ ...r, key: enc.encode(r.key) }))
+    return this.base.view.find('@wdk-addressbook/mirrors', {}).toArray()
   }
 
   async removeMirror (key) {
-    const keyBuffer = enc.decode(enc.normalize(key))
+    const keyBuffer = enc.decode(key)
     await this.base.append(encode('@wdk-addressbook/del-mirror', { key: keyBuffer }))
     await this._updatePeering()
   }
@@ -677,7 +685,7 @@ class AddressBook extends ReadyResource {
     const mirrorList = await this.listMirrors()
     const mirrors = dedupeKeys([
       ...this.mirrors,
-      ...mirrorList.map((item) => enc.decode(enc.normalize(item.key)))
+      ...mirrorList.map((item) => item.key)
     ])
     if (this.peering) {
       this.peering.setKeys(mirrors)
