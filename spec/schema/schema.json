@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "schema": [
     {
       "name": "contact",
@@ -109,6 +109,11 @@
           "name": "name",
           "type": "string",
           "version": 1
+        },
+        {
+          "name": "proof",
+          "type": "buffer",
+          "version": 2
         }
       ]
     },

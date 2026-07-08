@@ -96,6 +96,10 @@ ns.register({
     {
       name: 'name',
       type: 'string'
+    },
+    {
+      name: 'proof',
+      type: 'buffer'
     }
   ]
 })

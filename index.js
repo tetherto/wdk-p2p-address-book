@@ -14,6 +14,8 @@ import * as db from './spec/db/index.js'
 import {
   deriveSeedKey,
   deriveSeedKeyPair,
+  sign,
+  verifySignature,
   generateId,
   decodeMirrorKey,
   dedupeKeys,
@@ -109,9 +111,18 @@ class AddressBook extends ReadyResource {
       await context.view.delete('@wdk-addressbook/addresses', data)
     })
 
-    /** Record a device writer and authorize it on the autobase as an indexer. */
+    /**
+     * Record a device writer and authorize it as an indexer. An optimistic op (from a
+     * not-yet-authorized core) must self-admit only its own key and carry `proof`, a
+     * signature over that key from the seed-derived bootstrap secret; non-optimistic adds are trusted.
+     */
     this.router.add('@wdk-addressbook/add-writer', async (data, context) => {
-      await context.view.insert('@wdk-addressbook/writer', data)
+      if (context.optimistic) {
+        if (!b4a.equals(data.key, context.writerKey)) return
+        if (!this._bootstrapKeyPair || !data.proof) return
+        if (!verifySignature(data.key, data.proof, this._bootstrapKeyPair.publicKey)) return
+      }
+      await context.view.insert('@wdk-addressbook/writer', { key: data.key, name: data.name })
       await context.base.addWriter(data.key, { indexer: true })
     })
 
@@ -136,7 +147,12 @@ class AddressBook extends ReadyResource {
 
   async _apply (nodes, view, base) {
     for (const node of nodes) {
-      await this.router.dispatch(node.value, { view, base })
+      await this.router.dispatch(node.value, {
+        view,
+        base,
+        optimistic: node.optimistic,
+        writerKey: node.from ? node.from.key : null
+      })
     }
     await view.flush()
   }
@@ -152,7 +168,7 @@ class AddressBook extends ReadyResource {
       encrypt: !!encryptionKey,
       encryptionKey,
       keyPair: opts.keyPair || null,
-      optimistic: !!opts.optimistic,
+      optimistic: true, // required: enrollment self-admits via optimistic append
       open (store) {
         return HyperDB.bee(store.get('view'), db, {
           extension: false,
@@ -170,6 +186,9 @@ class AddressBook extends ReadyResource {
     })
 
     await this.base.ready()
+    // Cold reopen: ready() can lag a tick behind our own durable optimistic
+    // add-writer node, so one update() settles `writable` before callers see it.
+    await this.base.update()
     if (this.replicate) await this._replicate()
   }
 
@@ -321,17 +340,13 @@ class AddressBook extends ReadyResource {
     }
   }
 
-  async _enrollLocalWriter ({ keyPair, name = null, timeout } = {}) {
+  /** Enroll via an optimistic self-append; adoption happens once add-writer applies it. */
+  async _enrollLocalWriter ({ name = null, timeout } = {}) {
     if (this.opened === false) await this.ready()
-    if (!keyPair) throw new Error('Bootstrap keyPair is required')
 
-    const writer = { key: this.writerKey, name }
-    await AddressBook._authorizeWriter(this.store, {
-      key: this.key,
-      keyPair,
-      encryptionKey: this.encryptionKey,
-      writer
-    })
+    const proof = sign(this.writerKey, this._bootstrapKeyPair.secretKey) // proves we hold the seed
+    const writer = { key: this.writerKey, name, proof }
+    await this.base.append(encode('@wdk-addressbook/add-writer', writer), { optimistic: true })
     await this._waitUntilWritable(timeout)
     return writer
   }
@@ -350,7 +365,7 @@ class AddressBook extends ReadyResource {
         throw new Error('could not sync the existing address book from its mirror(s); retry addMirror() once a mirror is reachable')
       }
     }
-    await this._enrollLocalWriter({ keyPair: this._bootstrapKeyPair, name: this._enrollName, timeout: this._enrollTimeout })
+    await this._enrollLocalWriter({ name: this._enrollName, timeout: this._enrollTimeout })
   }
 
   /**
@@ -375,23 +390,6 @@ class AddressBook extends ReadyResource {
       return true
     } catch {
       return false
-    }
-  }
-
-  static async _authorizeWriter (store, { key, keyPair, encryptionKey, writer }) {
-    const authorityStore = store.namespace('writer-enrollment-' + generateId())
-    const authority = new AddressBook(authorityStore, {
-      key,
-      keyPair,
-      encryptionKey,
-      replicate: false
-    })
-
-    try {
-      await authority.ready()
-      await authority.addWriter(writer)
-    } finally {
-      await authority.close()
     }
   }
 

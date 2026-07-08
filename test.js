@@ -5,7 +5,7 @@ import tmp from 'test-tmp'
 import b4a from 'b4a'
 
 import { encode } from './spec/hyperdispatch/index.js'
-import { deriveSeedKeyPair } from './utils.js'
+import { deriveSeedKeyPair, sign } from './utils.js'
 
 const TEST_SEED = b4a.alloc(64, 0xab)
 const TEST_NAMESPACE = 'test'
@@ -490,6 +490,55 @@ test('created device uses a device-specific writer and reopens writable', async 
   t.is((await reopened.getContact(alice.id)).name, 'Alice', 'reopened device kept data')
   const bob = await reopened.addContact({ name: 'Bob' })
   t.is(bob.name, 'Bob', 'reopened device can keep writing')
+})
+
+test('optimistic self-admit is authorized by a seed-derived bootstrap proof', async function (t) {
+  // create()'s enrollment path: admission must require the seed, not just "op came from this core".
+  const store = new Corestore(await tmp(t))
+  const book = await AddressBook.fromSeed(TEST_SEED, store, {
+    namespace: TEST_NAMESPACE,
+    replicate: false
+  })
+  t.teardown(async () => {
+    await book.close()
+    await store.close()
+  })
+  t.absent(book.writable, 'starts read-only (deferred enrollment)')
+
+  const selfAdmit = async (proof) => {
+    const writer = { key: book.writerKey, name: null }
+    if (proof) writer.proof = proof
+    await book.base.append(encode('@wdk-addressbook/add-writer', writer), { optimistic: true })
+    await book.base.update()
+  }
+
+  // Read access without the bootstrap secret must not mint a writer.
+  const foreign = deriveBootstrapKeyPair(b4a.alloc(64, 0x11))
+  await selfAdmit(sign(book.writerKey, foreign.secretKey))
+  t.absent(book.writable, 'invalid bootstrap proof does not admit a writer')
+
+  await selfAdmit(null)
+  t.absent(book.writable, 'missing proof does not admit a writer')
+
+  // Self-bind: a valid proof can't admit a different device's key.
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const otherKey = deriveBootstrapKeyPair(b4a.alloc(64, 0x22)).publicKey
+  await book.base.append(
+    encode('@wdk-addressbook/add-writer', { key: otherKey, name: null, proof: sign(otherKey, bootstrap.secretKey) }),
+    { optimistic: true }
+  )
+  await book.base.update()
+  t.absent(await book.getWriter(otherKey), 'valid proof for a different key is rejected (self-bind)')
+  t.absent(book.writable, 'still read-only after every rejected self-admit')
+
+  // The seed holder's bootstrap secret authorizes this device's own writer.
+  await selfAdmit(sign(book.writerKey, bootstrap.secretKey))
+  const deadline = Date.now() + 5000
+  while (!book.writable && Date.now() < deadline) {
+    await book.base.update()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  t.ok(book.writable, 'valid bootstrap proof admits this device as a writer')
 })
 
 let seedCounter = 0

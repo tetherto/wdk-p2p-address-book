@@ -19,6 +19,10 @@ export function signWithDerivedKey (message, seed, opts) {
   return crypto.sign(toBytes(message), keyPair.secretKey)
 }
 
+export function sign (message, secretKey) {
+  return crypto.sign(toBytes(message), secretKey)
+}
+
 export function verifySignature (message, signature, publicKey) {
   return crypto.verify(toBytes(message), toBytes(signature), toBytes(publicKey))
 }
