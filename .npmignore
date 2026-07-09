@@ -1,0 +1,9 @@
+node_modules
+coverage
+.github
+.vscode
+.e2e
+examples
+tests
+test.js
+PROTOCOL.md

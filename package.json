@@ -1,6 +1,20 @@
 {
   "name": "@tetherto/wdk-p2p-address-book",
   "version": "1.0.0-beta.1",
+  "description": "Distributed address book built on autobase.",
+  "keywords": [
+    "wdk",
+    "address-book",
+    "p2p",
+    "autobase",
+    "hyperswarm"
+  ],
+  "author": "Tether",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tetherto/wdk-p2p-address-book.git"
+  },
   "main": "index.js",
   "types": "./types/index.d.ts",
   "type": "module",
@@ -28,8 +42,10 @@
       "spec/**"
     ]
   },
-  "license": "Apache-2.0",
-  "description": "Distributed address book built on autobase",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "devDependencies": {
     "bare": "^1.28.7",
     "blind-peer": "^3.10.0",
