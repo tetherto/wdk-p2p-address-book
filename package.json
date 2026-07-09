@@ -44,7 +44,7 @@
     "autobase": "^7.19.4",
     "b4a": "^1.7.1",
     "bare-node-runtime": "^1.4.0",
-    "blind-peering": "^1.13.0",
+    "blind-peering": "^2.4.1",
     "corestore": "^7.4.7",
     "hypercore": "^11.16.2",
     "hypercore-crypto": "^3.4.2",

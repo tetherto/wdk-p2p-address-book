@@ -688,12 +688,14 @@ class AddressBook extends ReadyResource {
     if (this.peering) {
       this.peering.setKeys(mirrors)
     } else if (mirrors.length > 0) {
-      this.peering = new BlindPeering(this.swarm, this.store, {
+      this.peering = new BlindPeering(this.swarm.dht, this.store, {
         wakeup: this.base.wakeupProtocol,
-        autobaseMirrors: mirrors
+        keys: mirrors,
+        relayThrough: this.relayThrough
       })
     }
-    if (mirrors.length > 0) this.peering.addAutobaseBackground(this.base, undefined, { all: true })
+    // priority 2: restore data is written once, rarely updated — keep it last in line for blind-peer GC
+    if (mirrors.length > 0) this.peering.addAutobaseBackground(this.base, { priority: 2 })
   }
 
   _updatePeeringBackground () {
