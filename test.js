@@ -5,7 +5,8 @@ import tmp from 'test-tmp'
 import b4a from 'b4a'
 
 import { encode } from './spec/hyperdispatch/index.js'
-import { deriveSeedKeyPair, sign } from './utils.js'
+import { deriveSeedKeyPair } from '@tetherto/wdk-utils'
+import { sign } from './utils.js'
 
 const TEST_SEED = b4a.alloc(64, 0xab)
 const TEST_NAMESPACE = 'test'

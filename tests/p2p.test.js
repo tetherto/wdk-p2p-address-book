@@ -6,7 +6,7 @@ import b4a from 'b4a'
 import tmp from 'test-tmp'
 
 import AddressBook, { ADDRESS_TYPES } from '../index.js'
-import { deriveSeedKeyPair } from '../utils.js'
+import { deriveSeedKeyPair } from '@tetherto/wdk-utils'
 
 const TEST_SEED = b4a.alloc(64, 0xcd)
 const TEST_NAMESPACE = 'test'

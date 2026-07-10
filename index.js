@@ -11,9 +11,8 @@ import { sha256 } from '@noble/hashes/sha2.js'
 
 import { Router, encode } from './spec/hyperdispatch/index.js'
 import * as db from './spec/db/index.js'
+import { deriveSeedKey, deriveSeedKeyPair } from '@tetherto/wdk-utils'
 import {
-  deriveSeedKey,
-  deriveSeedKeyPair,
   sign,
   verifySignature,
   generateId,
