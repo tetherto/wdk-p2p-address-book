@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "offset": 0,
+  "schema": [
+    {
+      "name": "contacts",
+      "namespace": "wdk-addressbook",
+      "id": 0,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/contact",
+      "derived": false,
+      "key": [
+        "id"
+      ],
+      "trigger": null
+    },
+    {
+      "name": "addresses",
+      "namespace": "wdk-addressbook",
+      "id": 1,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [
+        "@wdk-addressbook/addresses-by-contact"
+      ],
+      "schema": "@wdk-addressbook/address",
+      "derived": false,
+      "key": [
+        "id"
+      ],
+      "trigger": null
+    },
+    {
+      "name": "addresses-by-contact",
+      "namespace": "wdk-addressbook",
+      "id": 2,
+      "type": 2,
+      "version": 1,
+      "collection": "@wdk-addressbook/addresses",
+      "unique": false,
+      "deprecated": false,
+      "key": [
+        "contactId"
+      ]
+    },
+    {
+      "name": "writer",
+      "namespace": "wdk-addressbook",
+      "id": 3,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/writer",
+      "derived": false,
+      "key": [
+        "key"
+      ],
+      "trigger": null
+    },
+    {
+      "name": "mirrors",
+      "namespace": "wdk-addressbook",
+      "id": 4,
+      "type": 1,
+      "version": 1,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/mirror",
+      "derived": false,
+      "key": [
+        "key"
+      ],
+      "trigger": null
+    }
+  ]
+}

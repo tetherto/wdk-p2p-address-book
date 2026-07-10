@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "offset": 0,
+  "schema": [
+    {
+      "id": 0,
+      "name": "@wdk-addressbook/put-contact",
+      "requestType": "@wdk-addressbook/contact",
+      "version": 1
+    },
+    {
+      "id": 1,
+      "name": "@wdk-addressbook/del-contact",
+      "requestType": "@wdk-addressbook/del-contact",
+      "version": 1
+    },
+    {
+      "id": 2,
+      "name": "@wdk-addressbook/put-address",
+      "requestType": "@wdk-addressbook/address",
+      "version": 1
+    },
+    {
+      "id": 3,
+      "name": "@wdk-addressbook/del-address",
+      "requestType": "@wdk-addressbook/del-address",
+      "version": 1
+    },
+    {
+      "id": 4,
+      "name": "@wdk-addressbook/add-writer",
+      "requestType": "@wdk-addressbook/writer",
+      "version": 1
+    },
+    {
+      "id": 5,
+      "name": "@wdk-addressbook/remove-writer",
+      "requestType": "@wdk-addressbook/writer",
+      "version": 1
+    },
+    {
+      "id": 6,
+      "name": "@wdk-addressbook/add-mirror",
+      "requestType": "@wdk-addressbook/mirror",
+      "version": 1
+    },
+    {
+      "id": 7,
+      "name": "@wdk-addressbook/del-mirror",
+      "requestType": "@wdk-addressbook/del-mirror",
+      "version": 1
+    }
+  ]
+}
