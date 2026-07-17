@@ -673,8 +673,7 @@ class AddressBook extends ReadyResource {
     }
 
     this.swarm.join(this.base.discoveryKey)
-    await this.swarm.flush()
-    await this._updatePeering()
+    this.swarm.flush().then(() => this._updatePeering()).catch(noop)
   }
 
   async _updatePeering () {
