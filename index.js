@@ -708,17 +708,15 @@ class AddressBook extends ReadyResource {
   // Lifecycle
 
   async suspend () {
-    if (this.swarm) {
-      await this.swarm.suspend()
-      await this.store.suspend()
-    }
+    if (this.peering) await this.peering.suspend()
+    if (this.swarm) await this.swarm.suspend()
+    await this.store.suspend()
   }
 
   async resume () {
-    if (this.swarm) {
-      await this.store.resume()
-      await this.swarm.resume()
-    }
+    await this.store.resume()
+    if (this.swarm) await this.swarm.resume()
+    if (this.peering) await this.peering.resume()
   }
 }
 
