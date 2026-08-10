@@ -653,6 +653,7 @@ class AddressBook extends ReadyResource {
 
   async removeMirror (key) {
     const keyBuffer = enc.decode(key)
+    this.mirrors = this.mirrors.filter((m) => !b4a.equals(m, keyBuffer))
     await this.base.append(encode('@wdk-addressbook/del-mirror', { key: keyBuffer }))
     await this._updatePeering()
   }
