@@ -12,7 +12,7 @@ npm install @tetherto/wdk-p2p-address-book
 
 ## Example: from a seed to an address book
 
-`AddressBook.fromSeed` is the only entrypoint you need. You give it a wallet seed, a `Corestore`, and a `namespace`; it derives every key (HKDF) and figures out whether this is the first device, a restoring device, or a reopen:
+`AddressBook.fromSeed` derives the book's keys (HKDF) from a wallet seed and `namespace`, then opens any state already stored in the supplied `Corestore`. It deliberately does not guess whether an unenrolled device should create a new book or join an existing one: a new or restoring device starts read-only and must choose an enrollment path explicitly.
 
 ```js
 import Corestore from 'corestore'
@@ -27,6 +27,10 @@ const store = new Corestore('./addressbook')
 // same seed but different namespaces get completely separate address books.
 const book = await AddressBook.fromSeed(seed, store, { namespace: 'tether-wallet' })
 
+// This user has no existing address book, so establish its genesis and enroll
+// this device's writer. Do not call create() when restoring an existing book.
+await book.create()
+
 // `mirrorKey` is a blind peer's public key (see "How sync works" below) — one
 // static value, the same for every user, shipped in app/BE config. Registering it
 // asks the peer to mirror THIS user's book. `addMirror` resolves with the mirror
@@ -35,7 +39,7 @@ await book.addMirror(mirrorKey)
 await book.addContact({ name: 'Alice' })
 ```
 
-On another device, pass the blind peer key as `mirrors` so `fromSeed` can pull the existing book down and auto-enroll this device's writer:
+On another device, pass the blind peer key as `mirrors` so replication can start as the book opens, then call `addMirror()` to sync the existing book and enroll this device's writer:
 
 ```js
 const store = new Corestore('./addressbook')
@@ -43,14 +47,21 @@ const restored = await AddressBook.fromSeed(seed, store, {
   namespace: 'tether-wallet',
   mirrors: [mirrorKey]
 })
+await restored.addMirror(mirrorKey)
 await restored.addContact({ name: 'Bob' })
 ```
+
+The three opening cases are:
+
+- **Brand-new book:** `fromSeed()` returns read-only; call `create()` once, then optionally `addMirror()`.
+- **Restore on another device:** `fromSeed()` returns read-only; call `addMirror()` to sync and join the existing book. Do not call `create()`, because that would start a fresh history instead of restoring.
+- **Reopen on the same device:** if its enrolled writer is present in the same persistent `Corestore`, `fromSeed()` reopens writable and no enrollment call is needed.
 
 The same seed and namespace always derive the same address book (its autobase key is deterministic), so every device converges on one book. Internally, a per-seed bootstrap keypair seeds the genesis and authorizes each device's own writer — it is never a long-lived writer. Conflicts resolve last-write-wins.
 
 The `namespace` is required and scopes everything: it is mixed into key derivation (per-app book identity) and used to namespace the cores within the `Corestore`, so two different namespaces can safely share one store without colliding. The seed is the per-user secret, and the blind-peer key(s) are the only shared config. You own the `Corestore` lifecycle and call `close()` on it yourself.
 
-> Note: when a device passes `mirrors` but no remote book exists yet, `fromSeed` waits up to `opts.timeout` (default 20s) for the genesis before establishing a fresh one. The very first device can simply omit `mirrors` and call `addMirror` afterward (as above) for instant setup.
+> Note: on a read-only device, `addMirror()` is join-only: it waits up to `opts.timeout` (default 20s) for an existing genesis and throws if none can be synced. It never silently creates a new book. Call `create()` first only when you know this user has no existing book; once the book is writable, `addMirror()` registers the mirror normally.
 
 ## How sync works
 
