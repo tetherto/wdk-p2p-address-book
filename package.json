@@ -1,7 +1,8 @@
 {
   "name": "@tetherto/wdk-p2p-address-book",
   "version": "1.0.0-beta.3",
-  "description": "Distributed address book built on autobase.",
+  "description": "Distributed address book built on Autobase for WDK (Wallet Development Kit) by Tether.",
+  "homepage": "https://docs.wdk.tether.io/tools/p2p-address-book/",
   "keywords": [
     "wdk",
     "address-book",
