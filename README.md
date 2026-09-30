@@ -1,8 +1,10 @@
 # @tetherto/wdk-p2p-address-book
 
-Encrypted, multi-device contact/address book built on Autobase. All keys are derived from the wallet seed, data syncs peer-to-peer (and via always-on blind peers), and the backend only ever sees opaque encrypted blocks.
+Encrypted, multi-device contact/address book for WDK (Wallet Development Kit) by Tether, built on Autobase. All keys are derived from the wallet seed, data syncs peer-to-peer (and via always-on blind peers), and the backend only ever sees opaque encrypted blocks.
 
 ESM, Node + Bare compatible.
+
+See the [P2P Address Book documentation](https://docs.wdk.tether.io/tools/p2p-address-book/).
 
 ## Install
 
