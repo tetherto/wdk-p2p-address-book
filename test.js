@@ -94,6 +94,32 @@ test('address input normalization', async function (t) {
   await book.close()
 })
 
+test('hyperdht address type', async function (t) {
+  const book = await createBook(t)
+
+  const alice = await book.addContact({ name: 'Alice' })
+
+  await book.addAddress(alice.id, {
+    address: '0x1234567890abcdef',
+    type: ADDRESS_TYPES.EVM,
+    network: 'ethereum'
+  })
+
+  const peer = await book.addAddress(alice.id, {
+    address: 'yb3wkzhs4h7bxpqxbdbecgwmzquk1zuoe1pnwhw76oe1cf3nn7xy',
+    type: ADDRESS_TYPES.HYPERDHT,
+    network: 'hyperdht',
+    label: 'Phone'
+  })
+
+  t.is(peer.type, ADDRESS_TYPES.HYPERDHT)
+
+  const addrs = await book.listAddresses(alice.id)
+  t.is(addrs.length, 2, 'a peer key sits alongside a payment address')
+
+  await book.close()
+})
+
 test('address input rejects invalid shape', async function (t) {
   const book = await createBook(t)
   const alice = await book.addContact({ name: 'Alice' })

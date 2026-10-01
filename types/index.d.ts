@@ -6,6 +6,7 @@ export type AddressType =
   | 'lightning-address'
   | 'lnurl'
   | 'spark'
+  | 'hyperdht'
 
 export const ADDRESS_TYPES: Readonly<{
   BITCOIN: 'bitcoin'
@@ -15,6 +16,7 @@ export const ADDRESS_TYPES: Readonly<{
   LIGHTNING_ADDRESS: 'lightning-address'
   LNURL: 'lnurl'
   SPARK: 'spark'
+  HYPERDHT: 'hyperdht'
 }>
 
 export interface Contact {
