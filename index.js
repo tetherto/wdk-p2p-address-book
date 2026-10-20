@@ -1,3 +1,4 @@
+import fs from 'fs'
 import Autobase from 'autobase'
 import Hypercore from 'hypercore'
 import HyperDB from 'hyperdb'
@@ -291,7 +292,7 @@ class AddressBook extends ReadyResource {
       deriveSeedKey(seed, { salt: ADDRESS_BOOK_SEED_SALT, info: (opts.namespace ?? 'default') + ':storage-scope' }),
       'hex'
     ).slice(0, 32)
-    const store = new Corestore(storagePath.replace(/\/+$/, '') + '/' + scope)
+    const store = await openCorestore(storagePath.replace(/\/+$/, '') + '/' + scope)
     let book
     try {
       book = await AddressBook.fromSeed(seed, store, opts)
@@ -717,6 +718,25 @@ class AddressBook extends ReadyResource {
     await this.store.resume()
     if (this.swarm) await this.swarm.resume()
     if (this.peering) await this.peering.resume()
+  }
+}
+
+async function openCorestore (dir) {
+  // A failed lock attempt leaves an empty device file, which fails every later open once locking works.
+  const deviceFile = dir + '/CORESTORE'
+  const stat = await fs.promises.stat(deviceFile).catch(noop)
+  if (stat && stat.size === 0) await fs.promises.unlink(deviceFile)
+
+  const store = new Corestore(dir)
+  try {
+    await store.ready()
+    return store
+  } catch (err) {
+    await store.close().catch(noop)
+    // fs-native-extensions' lock fails with EINVAL where it is broken (32-bit Android).
+    // RocksDB's own lock still stops a second open of the store.
+    if (err.code !== 'EINVAL') throw err
+    return new Corestore(dir, { allowBackup: true })
   }
 }
 
