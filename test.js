@@ -3,6 +3,8 @@ import AddressBook, { ADDRESS_TYPES } from './index.js'
 import Corestore from 'corestore'
 import tmp from 'test-tmp'
 import b4a from 'b4a'
+import fs from 'fs'
+import fsx from 'fs-native-extensions'
 
 import { encode } from './spec/hyperdispatch/index.js'
 import { deriveSeedKeyPair } from '@tetherto/wdk-utils'
@@ -540,6 +542,55 @@ test('optimistic self-admit is authorized by a seed-derived bootstrap proof', as
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   t.ok(book.writable, 'valid bootstrap proof admits this device as a writer')
+})
+
+test('createWorkletModule reopens a store whose device file was left empty', async function (t) {
+  const storagePath = await tmp(t)
+  const config = { storagePath, namespace: TEST_NAMESPACE, replicate: false }
+
+  const book = await AddressBook.createWorkletModule({ seed: TEST_SEED, config })
+  await book.create()
+  const alice = await book.addContact({ name: 'Alice' })
+  await book.close()
+
+  // What a failed lock attempt leaves behind: a fresh, empty device file.
+  const [scope] = await fs.promises.readdir(storagePath)
+  const deviceFile = storagePath + '/' + scope + '/CORESTORE'
+  await fs.promises.rm(deviceFile)
+  await fs.promises.writeFile(deviceFile, '')
+
+  const reopened = await AddressBook.createWorkletModule({ seed: TEST_SEED, config })
+  t.teardown(() => reopened.close())
+
+  t.ok(reopened.writable, 'reopened store is writable')
+  t.is((await reopened.getContact(alice.id)).name, 'Alice', 'reopened store kept data')
+})
+
+test('createWorkletModule opens without the device file lock when locking fails with EINVAL', async function (t) {
+  // How fs-native-extensions' lock fails on 32-bit Android.
+  const tryLock = fsx.tryLock
+  fsx.tryLock = () => { throw Object.assign(new Error('invalid argument'), { code: 'EINVAL' }) }
+  t.teardown(() => { fsx.tryLock = tryLock })
+
+  const config = { storagePath: await tmp(t), namespace: TEST_NAMESPACE, replicate: false }
+  const book = await AddressBook.createWorkletModule({ seed: TEST_SEED, config })
+  t.teardown(() => book.close())
+
+  await book.create()
+  const alice = await book.addContact({ name: 'Alice' })
+  t.is((await book.getContact(alice.id)).name, 'Alice', 'store works without the device file lock')
+})
+
+test('createWorkletModule does not fall back when the store is already open', async function (t) {
+  const config = { storagePath: await tmp(t), namespace: TEST_NAMESPACE, replicate: false }
+  const book = await AddressBook.createWorkletModule({ seed: TEST_SEED, config })
+  t.teardown(() => book.close())
+
+  await t.exception(
+    AddressBook.createWorkletModule({ seed: TEST_SEED, config }),
+    /could not be locked/,
+    'second open is still refused'
+  )
 })
 
 test('removeMirror removes the key from the in-memory peering set, not just the persisted record', async function (t) {
