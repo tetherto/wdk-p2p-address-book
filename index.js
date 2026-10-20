@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 import Autobase from 'autobase'
 import Hypercore from 'hypercore'
 import HyperDB from 'hyperdb'
@@ -292,7 +293,7 @@ class AddressBook extends ReadyResource {
       deriveSeedKey(seed, { salt: ADDRESS_BOOK_SEED_SALT, info: (opts.namespace ?? 'default') + ':storage-scope' }),
       'hex'
     ).slice(0, 32)
-    const store = await openCorestore(storagePath.replace(/\/+$/, '') + '/' + scope)
+    const store = await openCorestore(path.join(storagePath, scope))
     let book
     try {
       book = await AddressBook.fromSeed(seed, store, opts)
