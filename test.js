@@ -542,6 +542,38 @@ test('optimistic self-admit is authorized by a seed-derived bootstrap proof', as
   t.ok(book.writable, 'valid bootstrap proof admits this device as a writer')
 })
 
+test('removeMirror removes the key from the in-memory peering set, not just the persisted record', async function (t) {
+  const book = await createBook(t)
+
+  const mirrorKey = b4a.alloc(32, 0x99)
+  await book.addMirror(mirrorKey)
+
+  t.ok(
+    book.mirrors.some((m) => b4a.equals(m, mirrorKey)),
+    'addMirror tracks the key in the in-memory peering set'
+  )
+  t.ok(
+    (await book.listMirrors()).some((m) => b4a.equals(m.key, mirrorKey)),
+    'addMirror persists the key'
+  )
+
+  await book.removeMirror(mirrorKey)
+
+  t.absent(
+    (await book.listMirrors()).some((m) => b4a.equals(m.key, mirrorKey)),
+    'removeMirror removes the persisted record'
+  )
+  // _updatePeering() unions book.mirrors with the persisted list on every call, so a
+  // key left behind here keeps getting re-added to the peering set even though the
+  // persisted record (checked above) says it was removed.
+  t.absent(
+    book.mirrors.some((m) => b4a.equals(m, mirrorKey)),
+    'removeMirror also drops the key from the in-memory peering set'
+  )
+
+  await book.close()
+})
+
 let seedCounter = 0
 
 async function createBook (t, opts) {
