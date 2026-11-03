@@ -215,6 +215,31 @@ test('contacts sorted alphabetically', async function (t) {
   await book.close()
 })
 
+test('solana, ton, aptos and other address types', async function (t) {
+  const book = await createBook(t)
+
+  const alice = await book.addContact({ name: 'Alice' })
+  const inputs = [
+    { address: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', type: ADDRESS_TYPES.SOLANA, network: 'solana' },
+    { address: 'EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2', type: ADDRESS_TYPES.TON, network: 'ton' },
+    { address: '0x' + 'a'.repeat(64), type: ADDRESS_TYPES.APTOS, network: 'aptos' },
+    { address: 'cosmos1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu', type: ADDRESS_TYPES.OTHER, network: 'cosmos' }
+  ]
+
+  for (const input of inputs) {
+    const addr = await book.addAddress(alice.id, input)
+    t.is(addr.type, input.type)
+  }
+
+  const stored = await book.listAddresses(alice.id)
+  t.alike(
+    stored.map((a) => a.type).sort(),
+    ['aptos', 'other', 'solana', 'ton']
+  )
+
+  await book.close()
+})
+
 test('UMA uniqueness', async function (t) {
   const book = await createBook(t)
 

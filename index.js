@@ -38,7 +38,11 @@ const ADDRESS_TYPES = Object.freeze({
   UMA: 'uma',
   LIGHTNING_ADDRESS: 'lightning-address',
   LNURL: 'lnurl',
-  SPARK: 'spark'
+  SPARK: 'spark',
+  SOLANA: 'solana',
+  TON: 'ton',
+  APTOS: 'aptos',
+  OTHER: 'other'
 })
 const ADDRESS_TYPE_SET = new Set(Object.values(ADDRESS_TYPES))
 

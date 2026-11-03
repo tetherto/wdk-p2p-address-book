@@ -365,7 +365,8 @@ function randomAddress () {
     () => ({ address: '0x' + randomHex(40), type: ADDRESS_TYPES.EVM, network: pick(['ethereum', 'polygon', 'arbitrum']), label: 'Wallet' }),
     () => ({ address: 'bc1q' + randomHex(38), type: ADDRESS_TYPES.BITCOIN, network: 'bitcoin', label: 'BTC' }),
     () => ({ address: '$' + randomHex(8) + '@uma.me', type: ADDRESS_TYPES.UMA, network: 'ethereum' }),
-    () => ({ address: 'T' + randomHex(33), type: ADDRESS_TYPES.TRON, network: 'tron', label: 'TRX' })
+    () => ({ address: 'T' + randomHex(33), type: ADDRESS_TYPES.TRON, network: 'tron', label: 'TRX' }),
+    () => ({ address: randomHex(44), type: ADDRESS_TYPES.SOLANA, network: 'solana', label: 'SOL' })
   ]
   return pick(variants)()
 }
