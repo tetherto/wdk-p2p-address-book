@@ -1,6 +1,8 @@
 import test from 'brittle'
 import Corestore from 'corestore'
 import createTestnet from 'hyperdht/testnet.js'
+import HyperDHT from 'hyperdht'
+import Hyperswarm from 'hyperswarm'
 import BlindPeer from 'blind-peer'
 import b4a from 'b4a'
 import tmp from 'test-tmp'
@@ -15,15 +17,7 @@ const ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
 
 test('p2p restore reads from blind peer when first device is offline', async function (t) {
   const testnet = await createTestnet(3, t)
-
-  const mirror = new BlindPeer(await tmp(t), {
-    bootstrap: testnet.bootstrap,
-    announcingInterval: 50,
-    replicationLagThreshold: 0
-  })
-  t.teardown(() => closeIfOpen(mirror))
-  await mirror.ready()
-  await mirror.listen()
+  const mirror = await createMirror(t, testnet)
 
   // Device A: first device. Construct is read-only; create() establishes the genesis.
   const deviceA = await createDevice(t, TEST_SEED, {
@@ -88,15 +82,7 @@ test('p2p restore reads from blind peer when first device is offline', async fun
 
 test('one blind peer serves multiple users (multi-tenant, isolated)', async function (t) {
   const testnet = await createTestnet(3, t)
-
-  const mirror = new BlindPeer(await tmp(t), {
-    bootstrap: testnet.bootstrap,
-    announcingInterval: 50,
-    replicationLagThreshold: 0
-  })
-  t.teardown(() => closeIfOpen(mirror))
-  await mirror.ready()
-  await mirror.listen()
+  const mirror = await createMirror(t, testnet)
 
   const user1Seed = b4a.alloc(64, 0x01)
   const user2Seed = b4a.alloc(64, 0x02)
@@ -158,6 +144,26 @@ test('one blind peer serves multiple users (multi-tenant, isolated)', async func
   t.absent(await restore1.getContact(u2.contact.id), 'user 1 cannot read user 2 data')
   t.absent(await restore2.getContact(u1.contact.id), 'user 2 cannot read user 1 data')
 })
+
+// Unfirewalled like a real hosted blind peer. Holepunching between two firewalled
+// localhost nodes aborts, and the retried socket stalls until it times out (~15s).
+async function createMirror (t, testnet) {
+  const swarm = new Hyperswarm({
+    dht: new HyperDHT({ bootstrap: testnet.bootstrap, firewalled: false, host: '127.0.0.1' })
+  })
+  const mirror = new BlindPeer(await tmp(t), {
+    swarm,
+    announcingInterval: 50,
+    replicationLagThreshold: 0
+  })
+  t.teardown(async () => {
+    await closeIfOpen(mirror)
+    await swarm.destroy()
+  })
+  await mirror.ready()
+  await mirror.listen()
+  return mirror
+}
 
 async function createDevice (t, seed, opts) {
   const store = new Corestore(await tmp(t))
