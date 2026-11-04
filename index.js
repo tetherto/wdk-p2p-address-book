@@ -1,4 +1,3 @@
-import fs from 'fs'
 import path from 'path'
 import Autobase from 'autobase'
 import Hypercore from 'hypercore'
@@ -38,7 +37,11 @@ const ADDRESS_TYPES = Object.freeze({
   UMA: 'uma',
   LIGHTNING_ADDRESS: 'lightning-address',
   LNURL: 'lnurl',
-  SPARK: 'spark'
+  SPARK: 'spark',
+  SOLANA: 'solana',
+  TON: 'ton',
+  APTOS: 'aptos',
+  OTHER: 'other'
 })
 const ADDRESS_TYPE_SET = new Set(Object.values(ADDRESS_TYPES))
 
@@ -293,7 +296,7 @@ class AddressBook extends ReadyResource {
       deriveSeedKey(seed, { salt: ADDRESS_BOOK_SEED_SALT, info: (opts.namespace ?? 'default') + ':storage-scope' }),
       'hex'
     ).slice(0, 32)
-    const store = await openCorestore(path.join(storagePath, scope))
+    const store = new Corestore(path.join(storagePath, scope))
     let book
     try {
       book = await AddressBook.fromSeed(seed, store, opts)
@@ -720,25 +723,6 @@ class AddressBook extends ReadyResource {
     await this.store.resume()
     if (this.swarm) await this.swarm.resume()
     if (this.peering) await this.peering.resume()
-  }
-}
-
-async function openCorestore (dir) {
-  // A failed lock attempt leaves an empty device file, which fails every later open once locking works.
-  const deviceFile = dir + '/CORESTORE'
-  const stat = await fs.promises.stat(deviceFile).catch(noop)
-  if (stat && stat.size === 0) await fs.promises.unlink(deviceFile)
-
-  const store = new Corestore(dir)
-  try {
-    await store.ready()
-    return store
-  } catch (err) {
-    await store.close().catch(noop)
-    // fs-native-extensions' lock fails with EINVAL where it is broken (32-bit Android).
-    // RocksDB's own lock still stops a second open of the store.
-    if (err.code !== 'EINVAL') throw err
-    return new Corestore(dir, { allowBackup: true })
   }
 }
 
