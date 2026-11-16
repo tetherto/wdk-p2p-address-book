@@ -206,6 +206,36 @@ test('address input length limits', async function (t) {
   await book.close()
 })
 
+test('address stored over the length limits stays editable on other fields', async function (t) {
+  const book = await createBook(t)
+  const alice = await book.addContact({ name: 'Alice' })
+  const record = {
+    id: 'stored-before-limits',
+    contactId: alice.id,
+    address: 'a'.repeat(2000),
+    type: ADDRESS_TYPES.OTHER,
+    network: 'bitcoin',
+    label: null,
+    createdAt: 1,
+    updatedAt: 1
+  }
+  await book.base.append(encode('@wdk-addressbook/put-address', record))
+
+  const edited = await book.editAddress(record.id, { label: 'Savings' })
+
+  t.is(edited.address, 'a'.repeat(2000))
+  t.is(edited.label, 'Savings')
+
+  try {
+    await book.editAddress(record.id, { address: record.address })
+    t.fail('editAddress should have thrown')
+  } catch (e) {
+    t.is(e.message, 'Address must be at most 1024 characters')
+  }
+
+  await book.close()
+})
+
 test('contact name validation', async function (t) {
   const book = await createBook(t)
 
