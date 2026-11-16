@@ -167,12 +167,14 @@ class AddressBook extends ReadyResource {
     /**
      * Remove a current writer authorized by a seed signature over the remove action, its key and
      * that key's current epoch, switch the book to writer protocol 2, and advance the key's epoch
-     * so the earlier proofs for that key stop verifying.
+     * so the earlier proofs for that key stop verifying. The last writer of the book is kept.
      */
     this.router.add('@wdk-addressbook/remove-writer-v2', async (data, context) => {
       const epoch = await getWriterEpoch(context.view, data.key)
       if (!this._verifyWriterProof(REMOVE_WRITER_ACTION, data, epoch)) return
       if (!(await context.view.get('@wdk-addressbook/writer', { key: data.key }))) return
+      const indexers = context.base.system.indexers
+      if (indexers.length === 1 && b4a.equals(indexers[0].key, data.key)) return
       await context.view.insert('@wdk-addressbook/writer-protocol', { version: WRITER_PROTOCOL })
       await context.view.insert('@wdk-addressbook/writer-epochs', { key: data.key, epoch: epoch + 1 })
       await context.view.delete('@wdk-addressbook/writer', { key: data.key })

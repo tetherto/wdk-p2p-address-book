@@ -848,6 +848,19 @@ test('a removal on a legacy book stops the removed device from replaying its leg
   t.absent(b.book.writable)
 })
 
+test('removing the last writer of a book is ignored', async function (t) {
+  const { book } = await openDevice(t)
+  await book.create()
+
+  await book.removeWriter(book.writerKey)
+  await book.base.update()
+
+  t.ok(book.writable)
+  t.alike(await book.getWriter(book.writerKey), { key: book.writerKey, name: null, proof: null })
+  const contact = await book.addContact({ name: 'Alice' })
+  t.is((await book.getContact(contact.id)).name, 'Alice')
+})
+
 test('addWriter and removeWriter throw on a book not constructed from a seed', async function (t) {
   const { book } = await openDevice(t)
   const store = new Corestore(await tmp(t))

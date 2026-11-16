@@ -82,9 +82,9 @@ So what you distribute to wallets is a fixed set of blind-peer public keys (like
 
 `removeWriter(key)` stops that device from writing to the address book, not from reading it: the encryption key stays on the device. Anyone who holds the seed can always enroll a device again, so if the seed may be exposed, move to a new wallet.
 
-Adding and removing devices is signed with the seed. Once one device runs this version, a device still on an older version can no longer use the shared address book. Depending on which change reaches it first, it either closes the address book, so reads and writes throw, or silently stops receiving changes from other devices while its own edits still sync out. Updating it fixes this, and the data it already synced is kept. Update every device that shares the book.
+Adding and removing devices is signed with the seed. Once one device runs this version, a device still on an older version can no longer use the shared address book. It closes the address book with an error, so reads and writes throw. Updating it fixes this, and the data it already synced is kept. Update every device that shares the book.
 
-A removal made with an older version does not stop that device from adding itself back. After updating, check `listWriters()` and call `removeWriter()` again for any device you removed before the update.
+A removal made with an older version does not stop that device from adding itself back. After updating, and after removing a device, check `listWriters()` and call `removeWriter()` for any key you don't recognize. If your own device became read-only, call `create()` first.
 
 ## Example: running a blind peer
 
