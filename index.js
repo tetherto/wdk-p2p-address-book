@@ -30,6 +30,8 @@ import {
   normalizeAddressInput
 } from './address.utils.js'
 
+/** @typedef {import('./types/index.d.ts').Writer} Writer */
+
 const ADDRESS_TYPES = Object.freeze({
   BITCOIN: 'bitcoin',
   EVM: 'evm',
@@ -659,9 +661,9 @@ class AddressBook extends ReadyResource {
   /**
    * Authorize another device's writer key, signed with this book's seed-derived bootstrap key.
    *
-   * @param {Uint8Array | string | { key: Uint8Array, name: string | null }} data - the writer
-   *   key (raw or hex), or the key with a display name
-   * @returns {Promise<void>}
+   * @param {Uint8Array | string | Writer} data - the writer key (raw or hex), or the key with a
+   *   display name
+   * @returns {Promise<void>} Resolves once the signed change is appended to this device's log.
    * @throws {Error} If the address book was not constructed from a seed.
    * @throws {Error} If the key is not 32 bytes long.
    */
@@ -677,7 +679,7 @@ class AddressBook extends ReadyResource {
    * device can no longer write, but it keeps the encryption key and can still read the book.
    *
    * @param {Uint8Array | string} key - the writer key, raw or hex
-   * @returns {Promise<void>}
+   * @returns {Promise<void>} Resolves once the signed change is appended to this device's log.
    * @throws {Error} If the address book was not constructed from a seed.
    * @throws {Error} If the key is not 32 bytes long.
    */

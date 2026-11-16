@@ -626,7 +626,7 @@ test('a removed device cannot re-admit itself by replaying its own add-writer en
   t.is(replays.length, 2)
   t.is(await a.book.getWriter(b.book.writerKey), null)
   t.alike((await a.book.listWriters().toArray()).map((w) => w.key), [a.book.writerKey])
-  t.absent(b.book.writable)
+  t.is(b.book.writable, false)
 })
 
 test('an active writer cannot add a writer key without a valid seed proof', async function (t) {
@@ -707,7 +707,7 @@ test('a seed holder can re-enroll a device after it was removed', async function
   await b.book.create()
   await waitUntil(async () => !!(await a.book.getWriter(b.book.writerKey)), [a.book, b.book])
 
-  t.ok(b.book.writable)
+  t.is(b.book.writable, true)
   t.alike(await a.book.getWriter(b.book.writerKey), { key: b.book.writerKey, name: null, proof: null })
   const contact = await b.book.addContact({ name: 'Bob' })
   await waitUntil(async () => !!(await a.book.getContact(contact.id)), [a.book, b.book])
@@ -792,7 +792,7 @@ test('a device that joins from a copy behind an earlier removal becomes a writer
   replicate(t, a.book, e.book)
   await waitForSync(a.book, e.book)
 
-  t.ok(e.book.writable)
+  t.is(e.book.writable, true)
   t.alike(await a.book.getWriter(e.book.writerKey), { key: e.book.writerKey, name: null, proof: null })
   t.alike(await a.book.getContact(contact.id), contact)
 })
@@ -845,7 +845,7 @@ test('a removal on a legacy book stops the removed device from replaying its leg
 
   t.is(await a.book.getWriter(b.book.writerKey), null)
   t.alike(await a.book.listWriters().toArray(), [{ key: a.book.writerKey, name: null, proof: null }])
-  t.absent(b.book.writable)
+  t.is(b.book.writable, false)
 })
 
 test('removing the last writer of a book is ignored', async function (t) {
@@ -855,7 +855,7 @@ test('removing the last writer of a book is ignored', async function (t) {
   await book.removeWriter(book.writerKey)
   await book.base.update()
 
-  t.ok(book.writable)
+  t.is(book.writable, true)
   t.alike(await book.getWriter(book.writerKey), { key: book.writerKey, name: null, proof: null })
   const contact = await book.addContact({ name: 'Alice' })
   t.is((await book.getContact(contact.id)).name, 'Alice')
