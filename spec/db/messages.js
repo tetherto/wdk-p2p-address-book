@@ -174,7 +174,7 @@ const encoding7 = {
     state.end++ // max flag is 1 so always one byte
 
     if (version >= 3 && m.name) c.string.preencode(state, m.name)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.epoch)
     c.buffer.preencode(state, m.proof)
   },
   encode(state, m) {
@@ -184,7 +184,7 @@ const encoding7 = {
     c.uint.encode(state, flags)
 
     if (version >= 3 && m.name) c.string.encode(state, m.name)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.epoch)
     c.buffer.encode(state, m.proof)
   },
   decode(state) {
@@ -194,7 +194,7 @@ const encoding7 = {
     return {
       key: r0,
       name: (version >= 3 && (flags & 1) !== 0) ? c.string.decode(state) : null,
-      counter: c.uint.decode(state),
+      epoch: c.uint.decode(state),
       proof: c.buffer.decode(state)
     }
   }
@@ -204,12 +204,12 @@ const encoding7 = {
 const encoding8 = {
   preencode(state, m) {
     c.fixed32.preencode(state, m.key)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.epoch)
     c.buffer.preencode(state, m.proof)
   },
   encode(state, m) {
     c.fixed32.encode(state, m.key)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.epoch)
     c.buffer.encode(state, m.proof)
   },
   decode(state) {
@@ -219,35 +219,52 @@ const encoding8 = {
 
     return {
       key: r0,
-      counter: r1,
+      epoch: r1,
       proof: r2
     }
   }
 }
 
-// @wdk-addressbook/writer-admission
+// @wdk-addressbook/writer-protocol
 const encoding9 = {
   preencode(state, m) {
-    c.uint.preencode(state, m.protocol)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.version)
   },
   encode(state, m) {
-    c.uint.encode(state, m.protocol)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.version)
   },
   decode(state) {
     const r0 = c.uint.decode(state)
+
+    return {
+      version: r0
+    }
+  }
+}
+
+// @wdk-addressbook/writer-epoch
+const encoding10 = {
+  preencode(state, m) {
+    c.fixed32.preencode(state, m.key)
+    c.uint.preencode(state, m.epoch)
+  },
+  encode(state, m) {
+    c.fixed32.encode(state, m.key)
+    c.uint.encode(state, m.epoch)
+  },
+  decode(state) {
+    const r0 = c.fixed32.decode(state)
     const r1 = c.uint.decode(state)
 
     return {
-      protocol: r0,
-      counter: r1
+      key: r0,
+      epoch: r1
     }
   }
 }
 
 // @wdk-addressbook/contact/hyperdb#0
-const encoding10 = {
+const encoding11 = {
   preencode(state, m) {
     c.string.preencode(state, m.name)
     state.end++ // max flag is 1 so always one byte
@@ -281,7 +298,7 @@ const encoding10 = {
 }
 
 // @wdk-addressbook/address/hyperdb#1
-const encoding11 = {
+const encoding12 = {
   preencode(state, m) {
     c.string.preencode(state, m.contactId)
     c.string.preencode(state, m.address)
@@ -327,7 +344,7 @@ const encoding11 = {
 }
 
 // @wdk-addressbook/writer/hyperdb#3
-const encoding12 = {
+const encoding13 = {
   preencode(state, m) {
     state.end++ // max flag is 2 so always one byte
 
@@ -354,7 +371,7 @@ const encoding12 = {
 }
 
 // @wdk-addressbook/mirror/hyperdb#4
-const encoding13 = {
+const encoding14 = {
   preencode(state, m) {
 
   },
@@ -364,6 +381,24 @@ const encoding13 = {
   decode(state) {
     return {
       key: null
+    }
+  }
+}
+
+// @wdk-addressbook/writer-epoch/hyperdb#6
+const encoding15 = {
+  preencode(state, m) {
+    c.uint.preencode(state, m.epoch)
+  },
+  encode(state, m) {
+    c.uint.encode(state, m.epoch)
+  },
+  decode(state) {
+    const r1 = c.uint.decode(state)
+
+    return {
+      key: null,
+      epoch: r1
     }
   }
 }
@@ -409,16 +444,20 @@ function getEncoding(name) {
       return encoding7
     case '@wdk-addressbook/remove-writer-v2':
       return encoding8
-    case '@wdk-addressbook/writer-admission':
+    case '@wdk-addressbook/writer-protocol':
       return encoding9
-    case '@wdk-addressbook/contact/hyperdb#0':
+    case '@wdk-addressbook/writer-epoch':
       return encoding10
-    case '@wdk-addressbook/address/hyperdb#1':
+    case '@wdk-addressbook/contact/hyperdb#0':
       return encoding11
-    case '@wdk-addressbook/writer/hyperdb#3':
+    case '@wdk-addressbook/address/hyperdb#1':
       return encoding12
-    case '@wdk-addressbook/mirror/hyperdb#4':
+    case '@wdk-addressbook/writer/hyperdb#3':
       return encoding13
+    case '@wdk-addressbook/mirror/hyperdb#4':
+      return encoding14
+    case '@wdk-addressbook/writer-epoch/hyperdb#6':
+      return encoding15
     default:
       throw new Error('Encoder not found ' + name)
   }

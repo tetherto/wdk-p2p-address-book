@@ -166,7 +166,7 @@ ns.register({
       type: 'string'
     },
     {
-      name: 'counter',
+      name: 'epoch',
       type: 'uint',
       required: true
     },
@@ -188,7 +188,7 @@ ns.register({
       required: true
     },
     {
-      name: 'counter',
+      name: 'epoch',
       type: 'uint',
       required: true
     },
@@ -201,16 +201,28 @@ ns.register({
 })
 
 ns.register({
-  name: 'writer-admission',
+  name: 'writer-protocol',
   compact: false,
   fields: [
     {
-      name: 'protocol',
+      name: 'version',
       type: 'uint',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'writer-epoch',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
       required: true
     },
     {
-      name: 'counter',
+      name: 'epoch',
       type: 'uint',
       required: true
     }
@@ -253,9 +265,15 @@ db.collections.register({
 })
 
 db.collections.register({
-  name: 'writer-admission',
-  schema: '@wdk-addressbook/writer-admission',
+  name: 'writer-protocol',
+  schema: '@wdk-addressbook/writer-protocol',
   key: []
+})
+
+db.collections.register({
+  name: 'writer-epochs',
+  schema: '@wdk-addressbook/writer-epoch',
+  key: ['key']
 })
 
 HyperdbBuilder.toDisk(dbTemplate, { esm: true })

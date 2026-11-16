@@ -57,8 +57,9 @@ const LEGACY_WRITER_PROTOCOL = 1
 const WRITER_PROTOCOL = 2
 const ADD_WRITER_ACTION = 1
 const REMOVE_WRITER_ACTION = 2
+const WRITER_ACTION_LENGTH = 1
 const WRITER_KEY_LENGTH = 32
-const WRITER_COUNTER_LENGTH = 8
+const WRITER_EPOCH_LENGTH = 8
 
 class AddressBook extends ReadyResource {
   constructor (corestore, opts = {}) {
@@ -126,9 +127,10 @@ class AddressBook extends ReadyResource {
      * Record a device writer and authorize it as an indexer. An optimistic op (from a
      * not-yet-authorized core) must self-admit only its own key and carry `proof`, a
      * signature over that key from the seed-derived bootstrap secret; non-optimistic adds are trusted.
+     * Ignored once the book uses writer protocol 2.
      */
     this.router.add('@wdk-addressbook/add-writer', async (data, context) => {
-      if ((await getWriterAdmission(context.view)).protocol >= WRITER_PROTOCOL) return
+      if (await getWriterProtocol(context.view) >= WRITER_PROTOCOL) return
       if (context.optimistic) {
         if (!b4a.equals(data.key, context.writerKey)) return
         if (!this._bootstrapKeyPair || !data.proof) return
@@ -138,37 +140,41 @@ class AddressBook extends ReadyResource {
       await context.base.addWriter(data.key, { indexer: true })
     })
 
-    /** Remove a device writer record and deauthorize it on the autobase. */
+    /**
+     * Remove a device writer record and deauthorize it on the autobase. Ignored once the book
+     * uses writer protocol 2.
+     */
     this.router.add('@wdk-addressbook/remove-writer', async (data, context) => {
-      if ((await getWriterAdmission(context.view)).protocol >= WRITER_PROTOCOL) return
+      if (await getWriterProtocol(context.view) >= WRITER_PROTOCOL) return
       await context.view.delete('@wdk-addressbook/writer', data)
       await context.base.removeWriter(data.key)
     })
 
     /**
-     * Admit a writer authorized by a seed signature over the add action, its key and the
-     * current writer counter, and switch the book to this protocol. An optimistic op must
-     * self-admit only its own key.
+     * Admit a writer authorized by a seed signature over the add action, its key and that key's
+     * current epoch, and switch the book to writer protocol 2. An optimistic op must self-admit
+     * only its own key.
      */
     this.router.add('@wdk-addressbook/add-writer-v2', async (data, context) => {
       if (context.optimistic && !b4a.equals(data.key, context.writerKey)) return
-      const admission = await getWriterAdmission(context.view)
-      if (!this._verifyWriterProof(ADD_WRITER_ACTION, data, admission.counter)) return
-      await context.view.insert('@wdk-addressbook/writer-admission', { protocol: WRITER_PROTOCOL, counter: admission.counter })
+      if (!this._verifyWriterProof(ADD_WRITER_ACTION, data, await getWriterEpoch(context.view, data.key))) return
+      await context.view.insert('@wdk-addressbook/writer-protocol', { version: WRITER_PROTOCOL })
       if (await context.view.get('@wdk-addressbook/writer', { key: data.key })) return
       await context.view.insert('@wdk-addressbook/writer', { key: data.key, name: data.name })
       await context.base.addWriter(data.key, { indexer: true })
     })
 
     /**
-     * Remove a current writer authorized by a seed signature over the remove action, its key
-     * and the current writer counter, then advance the counter so earlier proofs stop verifying.
+     * Remove a current writer authorized by a seed signature over the remove action, its key and
+     * that key's current epoch, switch the book to writer protocol 2, and advance the key's epoch
+     * so the earlier proofs for that key stop verifying.
      */
     this.router.add('@wdk-addressbook/remove-writer-v2', async (data, context) => {
-      const admission = await getWriterAdmission(context.view)
-      if (!this._verifyWriterProof(REMOVE_WRITER_ACTION, data, admission.counter)) return
+      const epoch = await getWriterEpoch(context.view, data.key)
+      if (!this._verifyWriterProof(REMOVE_WRITER_ACTION, data, epoch)) return
       if (!(await context.view.get('@wdk-addressbook/writer', { key: data.key }))) return
-      await context.view.insert('@wdk-addressbook/writer-admission', { protocol: admission.protocol, counter: admission.counter + 1 })
+      await context.view.insert('@wdk-addressbook/writer-protocol', { version: WRITER_PROTOCOL })
+      await context.view.insert('@wdk-addressbook/writer-epochs', { key: data.key, epoch: epoch + 1 })
       await context.view.delete('@wdk-addressbook/writer', { key: data.key })
       await context.base.removeWriter(data.key)
     })
@@ -386,30 +392,26 @@ class AddressBook extends ReadyResource {
   async _enrollLocalWriter ({ name = null, timeout } = {}) {
     if (this.opened === false) await this.ready()
 
-    const writer = await this._appendAddWriter({ key: this.writerKey, name }, { optimistic: true })
+    const writer = await this._appendWriterOp('@wdk-addressbook/add-writer-v2', ADD_WRITER_ACTION, { key: this.writerKey, name }, { optimistic: true })
     await this._waitUntilWritable(timeout)
     return writer
   }
 
   async _upgradeWriterProtocol () {
-    if ((await getWriterAdmission(this.base.view)).protocol >= WRITER_PROTOCOL) return
-    await this._appendAddWriter({ key: this.writerKey, name: this._enrollName })
+    if (await getWriterProtocol(this.base.view) >= WRITER_PROTOCOL) return
+    await this._appendWriterOp('@wdk-addressbook/add-writer-v2', ADD_WRITER_ACTION, { key: this.writerKey, name: this._enrollName })
   }
 
-  async _appendAddWriter ({ key, name }, opts) {
-    const { counter } = await getWriterAdmission(this.base.view)
-    const writer = { key, name, counter, proof: this._signWriterProof(ADD_WRITER_ACTION, key, counter) }
-    await this.base.append(encode('@wdk-addressbook/add-writer-v2', writer), opts)
-    return writer
+  async _appendWriterOp (name, action, fields, opts) {
+    const epoch = await getWriterEpoch(this.base.view, fields.key)
+    const op = { ...fields, epoch, proof: sign(writerProofMessage(action, fields.key, epoch), this._bootstrapKeyPair.secretKey) }
+    await this.base.append(encode(name, op), opts)
+    return op
   }
 
-  _signWriterProof (action, key, counter) {
-    return sign(writerProofMessage(action, key, counter), this._bootstrapKeyPair.secretKey)
-  }
-
-  _verifyWriterProof (action, data, counter) {
-    if (!this._bootstrapKeyPair || data.counter !== counter) return false
-    return verifySignature(writerProofMessage(action, data.key, counter), data.proof, this._bootstrapKeyPair.publicKey)
+  _verifyWriterProof (action, data, epoch) {
+    if (!this._bootstrapKeyPair || data.epoch !== epoch) return false
+    return verifySignature(writerProofMessage(action, data.key, epoch), data.proof, this._bootstrapKeyPair.publicKey)
   }
 
   /**
@@ -665,7 +667,7 @@ class AddressBook extends ReadyResource {
     if (typeof data === 'string') data = b4a.from(data, 'hex')
     if (b4a.isBuffer(data)) data = { key: data, name: null }
     this._assertSeeded('add a writer')
-    await this._appendAddWriter(data)
+    await this._appendWriterOp('@wdk-addressbook/add-writer-v2', ADD_WRITER_ACTION, data)
   }
 
   /**
@@ -680,9 +682,7 @@ class AddressBook extends ReadyResource {
   async removeWriter (key) {
     key = b4a.isBuffer(key) ? key : b4a.from(key, 'hex')
     this._assertSeeded('remove a writer')
-    const { counter } = await getWriterAdmission(this.base.view)
-    const proof = this._signWriterProof(REMOVE_WRITER_ACTION, key, counter)
-    await this.base.append(encode('@wdk-addressbook/remove-writer-v2', { key, counter, proof }))
+    await this._appendWriterOp('@wdk-addressbook/remove-writer-v2', REMOVE_WRITER_ACTION, { key })
   }
 
   _assertSeeded (action) {
@@ -806,16 +806,22 @@ class AddressBook extends ReadyResource {
   }
 }
 
-async function getWriterAdmission (view) {
-  return (await view.get('@wdk-addressbook/writer-admission')) ?? { protocol: LEGACY_WRITER_PROTOCOL, counter: 0 }
+async function getWriterProtocol (view) {
+  const protocol = await view.get('@wdk-addressbook/writer-protocol')
+  return protocol ? protocol.version : LEGACY_WRITER_PROTOCOL
 }
 
-function writerProofMessage (action, key, counter) {
-  const message = b4a.alloc(1 + WRITER_KEY_LENGTH + WRITER_COUNTER_LENGTH)
+async function getWriterEpoch (view, key) {
+  const record = await view.get('@wdk-addressbook/writer-epochs', { key })
+  return record ? record.epoch : 0
+}
+
+function writerProofMessage (action, key, epoch) {
+  const message = b4a.alloc(WRITER_ACTION_LENGTH + WRITER_KEY_LENGTH + WRITER_EPOCH_LENGTH)
   message[0] = action
-  message.set(key, 1)
+  message.set(key, WRITER_ACTION_LENGTH)
   new DataView(message.buffer, message.byteOffset, message.byteLength)
-    .setBigUint64(1 + WRITER_KEY_LENGTH, BigInt(counter))
+    .setBigUint64(WRITER_ACTION_LENGTH + WRITER_KEY_LENGTH, BigInt(epoch))
   return message
 }
 

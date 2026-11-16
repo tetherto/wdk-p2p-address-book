@@ -174,7 +174,7 @@ const encoding7 = {
     state.end++ // max flag is 1 so always one byte
 
     if (version >= 3 && m.name) c.string.preencode(state, m.name)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.epoch)
     c.buffer.preencode(state, m.proof)
   },
   encode(state, m) {
@@ -184,7 +184,7 @@ const encoding7 = {
     c.uint.encode(state, flags)
 
     if (version >= 3 && m.name) c.string.encode(state, m.name)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.epoch)
     c.buffer.encode(state, m.proof)
   },
   decode(state) {
@@ -194,7 +194,7 @@ const encoding7 = {
     return {
       key: r0,
       name: (version >= 3 && (flags & 1) !== 0) ? c.string.decode(state) : null,
-      counter: c.uint.decode(state),
+      epoch: c.uint.decode(state),
       proof: c.buffer.decode(state)
     }
   }
@@ -204,12 +204,12 @@ const encoding7 = {
 const encoding8 = {
   preencode(state, m) {
     c.fixed32.preencode(state, m.key)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.epoch)
     c.buffer.preencode(state, m.proof)
   },
   encode(state, m) {
     c.fixed32.encode(state, m.key)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.epoch)
     c.buffer.encode(state, m.proof)
   },
   decode(state) {
@@ -219,29 +219,46 @@ const encoding8 = {
 
     return {
       key: r0,
-      counter: r1,
+      epoch: r1,
       proof: r2
     }
   }
 }
 
-// @wdk-addressbook/writer-admission
+// @wdk-addressbook/writer-protocol
 const encoding9 = {
   preencode(state, m) {
-    c.uint.preencode(state, m.protocol)
-    c.uint.preencode(state, m.counter)
+    c.uint.preencode(state, m.version)
   },
   encode(state, m) {
-    c.uint.encode(state, m.protocol)
-    c.uint.encode(state, m.counter)
+    c.uint.encode(state, m.version)
   },
   decode(state) {
     const r0 = c.uint.decode(state)
+
+    return {
+      version: r0
+    }
+  }
+}
+
+// @wdk-addressbook/writer-epoch
+const encoding10 = {
+  preencode(state, m) {
+    c.fixed32.preencode(state, m.key)
+    c.uint.preencode(state, m.epoch)
+  },
+  encode(state, m) {
+    c.fixed32.encode(state, m.key)
+    c.uint.encode(state, m.epoch)
+  },
+  decode(state) {
+    const r0 = c.fixed32.decode(state)
     const r1 = c.uint.decode(state)
 
     return {
-      protocol: r0,
-      counter: r1
+      key: r0,
+      epoch: r1
     }
   }
 }
@@ -287,8 +304,10 @@ function getEncoding(name) {
       return encoding7
     case '@wdk-addressbook/remove-writer-v2':
       return encoding8
-    case '@wdk-addressbook/writer-admission':
+    case '@wdk-addressbook/writer-protocol':
       return encoding9
+    case '@wdk-addressbook/writer-epoch':
+      return encoding10
     default:
       throw new Error('Encoder not found ' + name)
   }

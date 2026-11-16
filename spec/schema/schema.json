@@ -191,7 +191,7 @@
           "version": 3
         },
         {
-          "name": "counter",
+          "name": "epoch",
           "required": true,
           "type": "uint",
           "version": 3
@@ -217,7 +217,7 @@
           "version": 3
         },
         {
-          "name": "counter",
+          "name": "epoch",
           "required": true,
           "type": "uint",
           "version": 3
@@ -231,19 +231,33 @@
       ]
     },
     {
-      "name": "writer-admission",
+      "name": "writer-protocol",
       "namespace": "wdk-addressbook",
       "compact": false,
       "flagsPosition": -1,
       "fields": [
         {
-          "name": "protocol",
+          "name": "version",
           "required": true,
           "type": "uint",
           "version": 3
+        }
+      ]
+    },
+    {
+      "name": "writer-epoch",
+      "namespace": "wdk-addressbook",
+      "compact": false,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "type": "fixed32",
+          "version": 3
         },
         {
-          "name": "counter",
+          "name": "epoch",
           "required": true,
           "type": "uint",
           "version": 3

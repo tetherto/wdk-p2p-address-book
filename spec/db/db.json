@@ -78,16 +78,31 @@
       "trigger": null
     },
     {
-      "name": "writer-admission",
+      "name": "writer-protocol",
       "namespace": "wdk-addressbook",
       "id": 5,
       "type": 1,
       "version": 2,
       "versionField": null,
       "indexes": [],
-      "schema": "@wdk-addressbook/writer-admission",
+      "schema": "@wdk-addressbook/writer-protocol",
       "derived": false,
       "key": [],
+      "trigger": null
+    },
+    {
+      "name": "writer-epochs",
+      "namespace": "wdk-addressbook",
+      "id": 6,
+      "type": 1,
+      "version": 2,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/writer-epoch",
+      "derived": false,
+      "key": [
+        "key"
+      ],
       "trigger": null
     }
   ]
