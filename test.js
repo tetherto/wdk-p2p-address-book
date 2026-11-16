@@ -4,7 +4,7 @@ import Corestore from 'corestore'
 import tmp from 'test-tmp'
 import b4a from 'b4a'
 
-import { encode } from './spec/hyperdispatch/index.js'
+import { encode, decode } from './spec/hyperdispatch/index.js'
 import { deriveSeedKeyPair } from '@tetherto/wdk-utils'
 import { sign } from './utils.js'
 
@@ -12,6 +12,8 @@ const TEST_SEED = b4a.alloc(64, 0xab)
 const TEST_NAMESPACE = 'test'
 const ADDRESS_BOOK_SEED_SALT = 'wdk-addressbook-v1'
 const ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO = 'bootstrap-writer'
+const ADD_WRITER_ACTION = 1
+const REMOVE_WRITER_ACTION = 2
 
 test('basic CRUD - contacts', async function (t) {
   const book = await createBook(t)
@@ -599,6 +601,181 @@ test('removeMirror removes the key from the in-memory peering set, not just the 
   await book.close()
 })
 
+test('a removed device cannot re-admit itself by replaying its own add-writer entries', async function (t) {
+  const a = await openDevice(t)
+  await a.book.create()
+  const b = await openDevice(t)
+  replicate(t, a.book, b.book)
+  await b.book.create()
+  await waitUntil(async () => !!(await a.book.getWriter(b.book.writerKey)), [a.book, b.book])
+
+  await a.book.removeWriter(b.book.writerKey)
+  await waitUntil(async () => !b.book.writable, [a.book, b.book])
+
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const replays = [
+    ...(await readLocalAddWriterOps(b.book)),
+    { name: '@wdk-addressbook/add-writer', value: { key: b.book.writerKey, name: null, proof: sign(b.book.writerKey, bootstrap.secretKey) } }
+  ]
+  for (const { name, value } of replays) {
+    await b.book.base.append(encode(name, value), { optimistic: true })
+  }
+  await waitForCore(a.book, b.book.writerKey, b.book.base.local.length)
+  await a.book.base.update()
+
+  t.is(replays.length, 2)
+  t.is(await a.book.getWriter(b.book.writerKey), null)
+  t.alike((await a.book.listWriters().toArray()).map((w) => w.key), [a.book.writerKey])
+  t.absent(b.book.writable)
+})
+
+test('an active writer cannot add a writer key without a valid seed proof', async function (t) {
+  const { book } = await openDevice(t)
+  await book.create()
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const foreign = deriveBootstrapKeyPair(b4a.alloc(64, 0x11))
+  const writerKey = b4a.alloc(32, 0x77)
+
+  await book.base.append(encode('@wdk-addressbook/add-writer', { key: writerKey, name: 'no proof' }))
+  await book.base.update()
+
+  t.is(await book.getWriter(writerKey), null)
+
+  await book.base.append(encode('@wdk-addressbook/add-writer-v2', {
+    key: writerKey, name: 'foreign proof', counter: 0, proof: writerProof(ADD_WRITER_ACTION, writerKey, 0, foreign.secretKey)
+  }))
+  await book.base.append(encode('@wdk-addressbook/add-writer-v2', {
+    key: writerKey, name: 'remove proof', counter: 0, proof: writerProof(REMOVE_WRITER_ACTION, writerKey, 0, bootstrap.secretKey)
+  }))
+  await book.base.append(encode('@wdk-addressbook/add-writer-v2', {
+    key: writerKey, name: 'future counter', counter: 1, proof: writerProof(ADD_WRITER_ACTION, writerKey, 1, bootstrap.secretKey)
+  }))
+  await book.base.update()
+
+  t.is(await book.getWriter(writerKey), null)
+
+  await book.addWriter({ key: writerKey, name: 'seed holder' })
+  await book.base.update()
+
+  t.alike(await book.getWriter(writerKey), { key: writerKey, name: 'seed holder', proof: null })
+})
+
+test('remove-writer without a valid seed proof for the current counter is ignored', async function (t) {
+  const { book } = await openDevice(t)
+  await book.create()
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const foreign = deriveBootstrapKeyPair(b4a.alloc(64, 0x11))
+  const writerKey = b4a.alloc(32, 0x77)
+  const otherKey = b4a.alloc(32, 0x88)
+  await book.addWriter({ key: writerKey, name: 'kept' })
+  await book.addWriter({ key: otherKey, name: 'removed' })
+  const staleProof = writerProof(REMOVE_WRITER_ACTION, writerKey, 0, bootstrap.secretKey)
+  await book.removeWriter(otherKey)
+
+  await book.base.append(encode('@wdk-addressbook/remove-writer', { key: writerKey }))
+  await book.base.update()
+
+  t.alike(await book.getWriter(writerKey), { key: writerKey, name: 'kept', proof: null })
+
+  await book.base.append(encode('@wdk-addressbook/remove-writer-v2', {
+    key: writerKey, counter: 1, proof: writerProof(REMOVE_WRITER_ACTION, writerKey, 1, foreign.secretKey)
+  }))
+  await book.base.append(encode('@wdk-addressbook/remove-writer-v2', {
+    key: writerKey, counter: 1, proof: writerProof(ADD_WRITER_ACTION, writerKey, 1, bootstrap.secretKey)
+  }))
+  await book.base.append(encode('@wdk-addressbook/remove-writer-v2', { key: writerKey, counter: 0, proof: staleProof }))
+  await book.base.update()
+
+  t.alike(await book.getWriter(writerKey), { key: writerKey, name: 'kept', proof: null })
+  t.is(await book.getWriter(otherKey), null)
+
+  await book.removeWriter(writerKey)
+  await book.base.update()
+
+  t.is(await book.getWriter(writerKey), null)
+})
+
+test('a seed holder can re-enroll a device after it was removed', async function (t) {
+  const a = await openDevice(t)
+  await a.book.create()
+  const b = await openDevice(t)
+  replicate(t, a.book, b.book)
+  await b.book.create()
+  await waitUntil(async () => !!(await a.book.getWriter(b.book.writerKey)), [a.book, b.book])
+  await a.book.removeWriter(b.book.writerKey)
+  await waitUntil(async () => !b.book.writable, [a.book, b.book])
+
+  await b.book.create()
+  await waitUntil(async () => !!(await a.book.getWriter(b.book.writerKey)), [a.book, b.book])
+
+  t.ok(b.book.writable)
+  t.alike(await a.book.getWriter(b.book.writerKey), { key: b.book.writerKey, name: null, proof: null })
+  const contact = await b.book.addContact({ name: 'Bob' })
+  await waitUntil(async () => !!(await a.book.getContact(contact.id)), [a.book, b.book])
+  t.is((await a.book.getContact(contact.id)).name, 'Bob')
+})
+
+test('legacy writer history replays unchanged, and legacy writer ops are ignored after the switch', async function (t) {
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const a = await openDevice(t)
+  const removedKey = b4a.alloc(32, 0x77)
+  const keptKey = b4a.alloc(32, 0x88)
+  await a.book.base.append(encode('@wdk-addressbook/add-writer', {
+    key: a.book.writerKey, name: 'A', proof: sign(a.book.writerKey, bootstrap.secretKey)
+  }), { optimistic: true })
+  await waitUntil(async () => a.book.writable, [a.book])
+  await a.book.base.append(encode('@wdk-addressbook/put-contact', { id: 'legacy', name: 'Alice', username: null, createdAt: 1, updatedAt: 1 }))
+  await a.book.base.append(encode('@wdk-addressbook/add-writer', { key: removedKey, name: 'removed' }))
+  await a.book.base.append(encode('@wdk-addressbook/remove-writer', { key: removedKey }))
+  await a.book.base.append(encode('@wdk-addressbook/add-writer', { key: keptKey, name: 'kept' }))
+  await a.book.base.update()
+
+  const b = await openDevice(t)
+  replicate(t, a.book, b.book)
+  await waitUntil(async () => !!(await b.book.getContact('legacy')), [a.book, b.book])
+  await b.book.base.update()
+
+  const expectedWriters = sortByKey([
+    { key: a.book.writerKey, name: 'A', proof: null },
+    { key: keptKey, name: 'kept', proof: null }
+  ])
+  t.alike(await a.book.listWriters().toArray(), expectedWriters)
+  t.alike(await b.book.listWriters().toArray(), expectedWriters)
+  t.alike(await b.book.listContacts(), [{ id: 'legacy', name: 'Alice', username: null, createdAt: 1, updatedAt: 1 }])
+
+  const lateKey = b4a.alloc(32, 0x99)
+  await a.book.addWriter({ key: removedKey, name: 'readded' })
+  await a.book.base.append(encode('@wdk-addressbook/remove-writer', { key: keptKey }))
+  await a.book.base.append(encode('@wdk-addressbook/add-writer', { key: lateKey, name: 'late' }))
+  await a.book.base.update()
+
+  t.alike(await a.book.listWriters().toArray(), sortByKey([
+    ...expectedWriters,
+    { key: removedKey, name: 'readded', proof: null }
+  ]))
+})
+
+test('reopening a writable legacy book switches it to the signed writer protocol', async function (t) {
+  const bootstrap = deriveBootstrapKeyPair(TEST_SEED)
+  const dir = await tmp(t)
+  const legacy = await openDevice(t, dir)
+  await legacy.book.base.append(encode('@wdk-addressbook/add-writer', {
+    key: legacy.book.writerKey, name: null, proof: sign(legacy.book.writerKey, bootstrap.secretKey)
+  }), { optimistic: true })
+  await waitUntil(async () => legacy.book.writable, [legacy.book])
+  await legacy.book.close()
+  await legacy.store.close()
+
+  const reopened = await openDevice(t, dir)
+  await reopened.book.base.update()
+  const writerKey = b4a.alloc(32, 0x77)
+  await reopened.book.base.append(encode('@wdk-addressbook/add-writer', { key: writerKey, name: 'no proof' }))
+  await reopened.book.base.update()
+
+  t.is(await reopened.book.getWriter(writerKey), null)
+  t.alike(await reopened.book.base.view.get('@wdk-addressbook/writer-admission'), { protocol: 2, counter: 0 })
+})
+
 let seedCounter = 0
 
 async function createBook (t, opts) {
@@ -622,4 +799,66 @@ function deriveBootstrapKeyPair (seed, namespace = TEST_NAMESPACE) {
     salt: ADDRESS_BOOK_SEED_SALT,
     info: namespace + ':' + ADDRESS_BOOK_BOOTSTRAP_WRITER_INFO
   })
+}
+
+async function openDevice (t, dir) {
+  const store = new Corestore(dir || await tmp(t))
+  const book = await AddressBook.fromSeed(TEST_SEED, store, {
+    namespace: TEST_NAMESPACE,
+    replicate: false
+  })
+  t.teardown(async () => {
+    await book.close()
+    await store.close()
+  })
+  return { book, store }
+}
+
+function replicate (t, a, b) {
+  const s1 = a.base.replicate(true)
+  const s2 = b.base.replicate(false)
+  s1.pipe(s2).pipe(s1)
+  t.teardown(() => {
+    s1.destroy()
+    s2.destroy()
+  }, { order: -1 })
+}
+
+async function waitUntil (fn, books, timeout = 10000) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    for (const book of books) await book.base.update()
+    if (await fn()) return
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  throw new Error('Timed out waiting for condition')
+}
+
+async function waitForCore (book, key, length) {
+  const core = book.store.get({ key })
+  await core.ready()
+  await waitUntil(async () => core.contiguousLength >= length, [book])
+  await core.close()
+}
+
+async function readLocalAddWriterOps (book) {
+  const ops = []
+  for (let i = 0; i < book.base.local.length; i++) {
+    const block = await book.base.local.get(i)
+    const { name, value } = decode(block.node.value)
+    if (name.startsWith('@wdk-addressbook/add-writer')) ops.push({ name, value })
+  }
+  return ops
+}
+
+function writerProof (action, key, counter, secretKey) {
+  const message = b4a.alloc(41)
+  message[0] = action
+  message.set(key, 1)
+  new DataView(message.buffer, message.byteOffset, message.byteLength).setBigUint64(33, BigInt(counter))
+  return sign(message, secretKey)
+}
+
+function sortByKey (writers) {
+  return writers.sort((a, b) => b4a.compare(a.key, b.key))
 }

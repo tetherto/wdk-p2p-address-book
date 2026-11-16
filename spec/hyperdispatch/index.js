@@ -16,8 +16,10 @@ class Router {
     this._handler5 = null
     this._handler6 = null
     this._handler7 = null
+    this._handler8 = null
+    this._handler9 = null
 
-    this._missing = 8
+    this._missing = 10
   }
 
   add (name, handler) {
@@ -46,6 +48,12 @@ class Router {
       case '@wdk-addressbook/del-mirror':
         this._handler7 = handler
         break
+      case '@wdk-addressbook/add-writer-v2':
+        this._handler8 = handler
+        break
+      case '@wdk-addressbook/remove-writer-v2':
+        this._handler9 = handler
+        break
       default:
         throw DispatchError.NONEXISTENT_ROUTE(name)
     }
@@ -61,6 +69,8 @@ class Router {
     assert(this._handler5 !== null, 'Missing handler for "@wdk-addressbook/remove-writer"')
     assert(this._handler6 !== null, 'Missing handler for "@wdk-addressbook/add-mirror"')
     assert(this._handler7 !== null, 'Missing handler for "@wdk-addressbook/del-mirror"')
+    assert(this._handler8 !== null, 'Missing handler for "@wdk-addressbook/add-writer-v2"')
+    assert(this._handler9 !== null, 'Missing handler for "@wdk-addressbook/remove-writer-v2"')
   }
 
   async dispatch (message, context) {
@@ -89,6 +99,10 @@ class Router {
         return this._handler6(op.value, context)
       case 7:
         return this._handler7(op.value, context)
+      case 8:
+        return this._handler8(op.value, context)
+      case 9:
+        return this._handler9(op.value, context)
       default:
         throw DispatchError.HANDLER_NOT_FOUND_BY_ID(op.id)
     }
@@ -170,6 +184,18 @@ const route7 = {
   enc: getEncoding('@wdk-addressbook/del-mirror')
 }
 
+const route8 = {
+  name: '@wdk-addressbook/add-writer-v2',
+  id: 8,
+  enc: getEncoding('@wdk-addressbook/add-writer-v2')
+}
+
+const route9 = {
+  name: '@wdk-addressbook/remove-writer-v2',
+  id: 9,
+  enc: getEncoding('@wdk-addressbook/remove-writer-v2')
+}
+
 function getRouteByName (name) {
   switch (name) {
     case '@wdk-addressbook/put-contact':
@@ -188,6 +214,10 @@ function getRouteByName (name) {
       return route6
     case '@wdk-addressbook/del-mirror':
       return route7
+    case '@wdk-addressbook/add-writer-v2':
+      return route8
+    case '@wdk-addressbook/remove-writer-v2':
+      return route9
     default:
       throw DispatchError.ROUTE_NOT_FOUND_BY_NAME(name)
   }
@@ -211,6 +241,10 @@ function getRouteById (id) {
       return route6
     case 7:
       return route7
+    case 8:
+      return route8
+    case 9:
+      return route9
     default:
       throw DispatchError.HANDLER_NOT_FOUND_BY_ID(id)
   }

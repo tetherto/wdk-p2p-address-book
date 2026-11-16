@@ -152,6 +152,71 @@ ns.register({
   ]
 })
 
+ns.register({
+  name: 'add-writer-v2',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
+      required: true
+    },
+    {
+      name: 'name',
+      type: 'string'
+    },
+    {
+      name: 'counter',
+      type: 'uint',
+      required: true
+    },
+    {
+      name: 'proof',
+      type: 'buffer',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'remove-writer-v2',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
+      required: true
+    },
+    {
+      name: 'counter',
+      type: 'uint',
+      required: true
+    },
+    {
+      name: 'proof',
+      type: 'buffer',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'writer-admission',
+  compact: false,
+  fields: [
+    {
+      name: 'protocol',
+      type: 'uint',
+      required: true
+    },
+    {
+      name: 'counter',
+      type: 'uint',
+      required: true
+    }
+  ]
+})
+
 Hyperschema.toDisk(addressbook, { esm: true })
 
 const dbTemplate = HyperdbBuilder.from('./spec/schema', './spec/db')
@@ -185,6 +250,12 @@ db.collections.register({
   name: 'mirrors',
   schema: '@wdk-addressbook/mirror',
   key: ['key']
+})
+
+db.collections.register({
+  name: 'writer-admission',
+  schema: '@wdk-addressbook/writer-admission',
+  key: []
 })
 
 HyperdbBuilder.toDisk(dbTemplate, { esm: true })
@@ -234,6 +305,16 @@ dispatch.register({
 dispatch.register({
   name: 'del-mirror',
   requestType: '@wdk-addressbook/del-mirror'
+})
+
+dispatch.register({
+  name: 'add-writer-v2',
+  requestType: '@wdk-addressbook/add-writer-v2'
+})
+
+dispatch.register({
+  name: 'remove-writer-v2',
+  requestType: '@wdk-addressbook/remove-writer-v2'
 })
 
 Hyperdispatch.toDisk(hyperdispatch, { esm: true })

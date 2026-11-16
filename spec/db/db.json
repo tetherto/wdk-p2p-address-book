@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "offset": 0,
   "schema": [
     {
@@ -75,6 +75,19 @@
       "key": [
         "key"
       ],
+      "trigger": null
+    },
+    {
+      "name": "writer-admission",
+      "namespace": "wdk-addressbook",
+      "id": 5,
+      "type": 1,
+      "version": 2,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/writer-admission",
+      "derived": false,
+      "key": [],
       "trigger": null
     }
   ]
