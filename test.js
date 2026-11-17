@@ -146,6 +146,96 @@ test('address input rejects invalid shape', async function (t) {
   await book.close()
 })
 
+test('address input length limits', async function (t) {
+  const book = await createBook(t)
+  const alice = await book.addContact({ name: 'Alice' })
+
+  const atCap = await book.addAddress(alice.id, {
+    address: '  ' + 'a'.repeat(1024) + '  ',
+    type: ADDRESS_TYPES.LNURL,
+    network: 'n'.repeat(64),
+    label: 'l'.repeat(256)
+  })
+
+  t.is(atCap.address, 'a'.repeat(1024))
+  t.is(atCap.network, 'n'.repeat(64))
+  t.is(atCap.label, 'l'.repeat(256))
+
+  const cases = [
+    {
+      input: { address: 'a'.repeat(1025) },
+      message: 'Address must be at most 1024 characters'
+    },
+    {
+      input: { network: 'N'.repeat(65) },
+      message: 'Address network must be at most 64 characters'
+    },
+    {
+      input: { label: 'l'.repeat(257) },
+      message: 'Address label must be at most 256 characters'
+    }
+  ]
+
+  for (const { input, message } of cases) {
+    try {
+      await book.addAddress(alice.id, { address: 'b', type: ADDRESS_TYPES.LNURL, network: 'bitcoin', ...input })
+      t.fail('addAddress should have thrown')
+    } catch (e) {
+      t.is(e.message, message)
+    }
+
+    try {
+      await book.editAddress(atCap.id, input)
+      t.fail('editAddress should have thrown')
+    } catch (e) {
+      t.is(e.message, message)
+    }
+  }
+
+  const edited = await book.editAddress(atCap.id, {
+    address: 'c'.repeat(1024),
+    network: 'm'.repeat(64),
+    label: 'k'.repeat(256)
+  })
+
+  t.is(edited.address, 'c'.repeat(1024))
+  t.is(edited.network, 'm'.repeat(64))
+  t.is(edited.label, 'k'.repeat(256))
+  t.alike(await book.listAddresses(alice.id), [edited])
+
+  await book.close()
+})
+
+test('address stored over the length limits stays editable on other fields', async function (t) {
+  const book = await createBook(t)
+  const alice = await book.addContact({ name: 'Alice' })
+  const record = {
+    id: 'stored-before-limits',
+    contactId: alice.id,
+    address: 'a'.repeat(2000),
+    type: ADDRESS_TYPES.OTHER,
+    network: 'bitcoin',
+    label: null,
+    createdAt: 1,
+    updatedAt: 1
+  }
+  await book.base.append(encode('@wdk-addressbook/put-address', record))
+
+  const edited = await book.editAddress(record.id, { label: 'Savings' })
+
+  t.is(edited.address, 'a'.repeat(2000))
+  t.is(edited.label, 'Savings')
+
+  try {
+    await book.editAddress(record.id, { address: record.address })
+    t.fail('editAddress should have thrown')
+  } catch (e) {
+    t.is(e.message, 'Address must be at most 1024 characters')
+  }
+
+  await book.close()
+})
+
 test('contact name validation', async function (t) {
   const book = await createBook(t)
 
