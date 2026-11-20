@@ -4,7 +4,7 @@
 import { IndexEncoder, c, b4a } from 'hyperdb/runtime'
 import { version, getEncoding, setVersion } from './messages.js'
 
-const versions = { schema: version, db: 1 }
+const versions = { schema: version, db: 2 }
 
 // '@wdk-addressbook/contacts' collection key
 const collection0_key = new IndexEncoder([
@@ -320,11 +320,140 @@ const collection4 = {
   decodedVersion: 0
 }
 
+// '@wdk-addressbook/writer-protocol' collection key
+const collection5_key = new IndexEncoder([
+], { prefix: 5 })
+
+function collection5_indexify (record) {
+  return []
+}
+
+// '@wdk-addressbook/writer-protocol' value encoding
+const collection5_enc = getEncoding('@wdk-addressbook/writer-protocol')
+
+// '@wdk-addressbook/writer-protocol' reconstruction function
+function collection5_reconstruct (schemaVersion, keyBuf, valueBuf) {
+  setVersion(schemaVersion)
+  const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
+  const type = c.uint.decode(state)
+  if (type !== 0) throw new Error('Unknown collection type: ' + type)
+  collection5.decodedVersion = c.uint.decode(state)
+  const record = collection5_enc.decode(state)
+  return record
+}
+// '@wdk-addressbook/writer-protocol' key reconstruction function
+function collection5_reconstruct_key (keyBuf) {
+  return {}
+}
+
+// '@wdk-addressbook/writer-protocol'
+const collection5 = {
+  name: '@wdk-addressbook/writer-protocol',
+  id: 5,
+  version: 2,
+  encodeKey (record) {
+    const key = []
+    return collection5_key.encode(key)
+  },
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+    return collection5_key.encodeRange({
+      gt: gt ? collection5_indexify(gt) : null,
+      lt: lt ? collection5_indexify(lt) : null,
+      gte: gte ? collection5_indexify(gte) : null,
+      lte: lte ? collection5_indexify(lte) : null
+    })
+  },
+  encodeValue (schemaVersion, collectionVersion, record) {
+    setVersion(schemaVersion)
+    const state = { start: 0, end: 2, buffer: null }
+    collection5_enc.preencode(state, record)
+    state.buffer = b4a.allocUnsafe(state.end)
+    state.buffer[state.start++] = 0
+    state.buffer[state.start++] = collectionVersion
+    collection5_enc.encode(state, record)
+    return state.buffer
+  },
+  trigger: null,
+  reconstruct: collection5_reconstruct,
+  reconstructKey: collection5_reconstruct_key,
+  indexes: [],
+  decodedVersion: 0
+}
+
+// '@wdk-addressbook/writer-epochs' collection key
+const collection6_key = new IndexEncoder([
+  IndexEncoder.BUFFER
+], { prefix: 6 })
+
+function collection6_indexify (record) {
+  const a = record.key
+  return a === undefined ? [] : [a]
+}
+
+// '@wdk-addressbook/writer-epochs' value encoding
+const collection6_enc = getEncoding('@wdk-addressbook/writer-epoch/hyperdb#6')
+
+// '@wdk-addressbook/writer-epochs' reconstruction function
+function collection6_reconstruct (schemaVersion, keyBuf, valueBuf) {
+  const key = collection6_key.decode(keyBuf)
+  setVersion(schemaVersion)
+  const state = { start: 0, end: valueBuf.byteLength, buffer: valueBuf }
+  const type = c.uint.decode(state)
+  if (type !== 0) throw new Error('Unknown collection type: ' + type)
+  collection6.decodedVersion = c.uint.decode(state)
+  const record = collection6_enc.decode(state)
+  record.key = key[0]
+  return record
+}
+// '@wdk-addressbook/writer-epochs' key reconstruction function
+function collection6_reconstruct_key (keyBuf) {
+  const key = collection6_key.decode(keyBuf)
+  return {
+    key: key[0]
+  }
+}
+
+// '@wdk-addressbook/writer-epochs'
+const collection6 = {
+  name: '@wdk-addressbook/writer-epochs',
+  id: 6,
+  version: 2,
+  encodeKey (record) {
+    const key = [record.key]
+    return collection6_key.encode(key)
+  },
+  encodeKeyRange ({ gt, lt, gte, lte } = {}) {
+    return collection6_key.encodeRange({
+      gt: gt ? collection6_indexify(gt) : null,
+      lt: lt ? collection6_indexify(lt) : null,
+      gte: gte ? collection6_indexify(gte) : null,
+      lte: lte ? collection6_indexify(lte) : null
+    })
+  },
+  encodeValue (schemaVersion, collectionVersion, record) {
+    setVersion(schemaVersion)
+    const state = { start: 0, end: 2, buffer: null }
+    collection6_enc.preencode(state, record)
+    state.buffer = b4a.allocUnsafe(state.end)
+    state.buffer[state.start++] = 0
+    state.buffer[state.start++] = collectionVersion
+    collection6_enc.encode(state, record)
+    return state.buffer
+  },
+  trigger: null,
+  reconstruct: collection6_reconstruct,
+  reconstructKey: collection6_reconstruct_key,
+  indexes: [],
+  decodedVersion: 0
+}
+
 const collections = [
   collection0,
   collection1,
   collection3,
-  collection4
+  collection4,
+  collection5,
+  collection6
 ]
 
 const indexes = [
@@ -339,6 +468,8 @@ function resolveCollection (name) {
     case '@wdk-addressbook/addresses': return collection1
     case '@wdk-addressbook/writer': return collection3
     case '@wdk-addressbook/mirrors': return collection4
+    case '@wdk-addressbook/writer-protocol': return collection5
+    case '@wdk-addressbook/writer-epochs': return collection6
     default: return null
   }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "offset": 0,
   "schema": [
     {
@@ -49,6 +49,18 @@
       "name": "@wdk-addressbook/del-mirror",
       "requestType": "@wdk-addressbook/del-mirror",
       "version": 1
+    },
+    {
+      "id": 8,
+      "name": "@wdk-addressbook/add-writer-v2",
+      "requestType": "@wdk-addressbook/add-writer-v2",
+      "version": 2
+    },
+    {
+      "id": 9,
+      "name": "@wdk-addressbook/remove-writer-v2",
+      "requestType": "@wdk-addressbook/remove-writer-v2",
+      "version": 2
     }
   ]
 }

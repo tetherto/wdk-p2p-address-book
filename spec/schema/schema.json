@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "schema": [
     {
       "name": "contact",
@@ -170,6 +170,97 @@
           "required": true,
           "type": "fixed32",
           "version": 1
+        }
+      ]
+    },
+    {
+      "name": "add-writer-v2",
+      "namespace": "wdk-addressbook",
+      "compact": false,
+      "flagsPosition": 1,
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "type": "fixed32",
+          "version": 3
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "version": 3
+        },
+        {
+          "name": "epoch",
+          "required": true,
+          "type": "uint",
+          "version": 3
+        },
+        {
+          "name": "proof",
+          "required": true,
+          "type": "buffer",
+          "version": 3
+        }
+      ]
+    },
+    {
+      "name": "remove-writer-v2",
+      "namespace": "wdk-addressbook",
+      "compact": false,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "type": "fixed32",
+          "version": 3
+        },
+        {
+          "name": "epoch",
+          "required": true,
+          "type": "uint",
+          "version": 3
+        },
+        {
+          "name": "proof",
+          "required": true,
+          "type": "buffer",
+          "version": 3
+        }
+      ]
+    },
+    {
+      "name": "writer-protocol",
+      "namespace": "wdk-addressbook",
+      "compact": false,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "version",
+          "required": true,
+          "type": "uint",
+          "version": 3
+        }
+      ]
+    },
+    {
+      "name": "writer-epoch",
+      "namespace": "wdk-addressbook",
+      "compact": false,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "type": "fixed32",
+          "version": 3
+        },
+        {
+          "name": "epoch",
+          "required": true,
+          "type": "uint",
+          "version": 3
         }
       ]
     }

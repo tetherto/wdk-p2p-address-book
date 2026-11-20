@@ -152,6 +152,83 @@ ns.register({
   ]
 })
 
+ns.register({
+  name: 'add-writer-v2',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
+      required: true
+    },
+    {
+      name: 'name',
+      type: 'string'
+    },
+    {
+      name: 'epoch',
+      type: 'uint',
+      required: true
+    },
+    {
+      name: 'proof',
+      type: 'buffer',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'remove-writer-v2',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
+      required: true
+    },
+    {
+      name: 'epoch',
+      type: 'uint',
+      required: true
+    },
+    {
+      name: 'proof',
+      type: 'buffer',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'writer-protocol',
+  compact: false,
+  fields: [
+    {
+      name: 'version',
+      type: 'uint',
+      required: true
+    }
+  ]
+})
+
+ns.register({
+  name: 'writer-epoch',
+  compact: false,
+  fields: [
+    {
+      name: 'key',
+      type: 'fixed32',
+      required: true
+    },
+    {
+      name: 'epoch',
+      type: 'uint',
+      required: true
+    }
+  ]
+})
+
 Hyperschema.toDisk(addressbook, { esm: true })
 
 const dbTemplate = HyperdbBuilder.from('./spec/schema', './spec/db')
@@ -184,6 +261,18 @@ db.collections.register({
 db.collections.register({
   name: 'mirrors',
   schema: '@wdk-addressbook/mirror',
+  key: ['key']
+})
+
+db.collections.register({
+  name: 'writer-protocol',
+  schema: '@wdk-addressbook/writer-protocol',
+  key: []
+})
+
+db.collections.register({
+  name: 'writer-epochs',
+  schema: '@wdk-addressbook/writer-epoch',
   key: ['key']
 })
 
@@ -234,6 +323,16 @@ dispatch.register({
 dispatch.register({
   name: 'del-mirror',
   requestType: '@wdk-addressbook/del-mirror'
+})
+
+dispatch.register({
+  name: 'add-writer-v2',
+  requestType: '@wdk-addressbook/add-writer-v2'
+})
+
+dispatch.register({
+  name: 'remove-writer-v2',
+  requestType: '@wdk-addressbook/remove-writer-v2'
 })
 
 Hyperdispatch.toDisk(hyperdispatch, { esm: true })

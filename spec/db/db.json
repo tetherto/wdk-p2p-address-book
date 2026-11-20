@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "offset": 0,
   "schema": [
     {
@@ -71,6 +71,34 @@
       "versionField": null,
       "indexes": [],
       "schema": "@wdk-addressbook/mirror",
+      "derived": false,
+      "key": [
+        "key"
+      ],
+      "trigger": null
+    },
+    {
+      "name": "writer-protocol",
+      "namespace": "wdk-addressbook",
+      "id": 5,
+      "type": 1,
+      "version": 2,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/writer-protocol",
+      "derived": false,
+      "key": [],
+      "trigger": null
+    },
+    {
+      "name": "writer-epochs",
+      "namespace": "wdk-addressbook",
+      "id": 6,
+      "type": 1,
+      "version": 2,
+      "versionField": null,
+      "indexes": [],
+      "schema": "@wdk-addressbook/writer-epoch",
       "derived": false,
       "key": [
         "key"

@@ -78,6 +78,14 @@ Discovery is key-based, not a per-user registry:
 
 So what you distribute to wallets is a fixed set of blind-peer public keys (like DHT bootstrap nodes), not anything per user. The per-user value — the autobase key — is derived from the seed and never needs distributing.
 
+### Removing a device and older versions
+
+`removeWriter(key)` stops that device from writing to the address book, not from reading it: the encryption key stays on the device. Anyone who holds the seed can always enroll a device again, so if the seed may be exposed, move to a new wallet.
+
+Adding and removing devices is signed with the seed. Once one device runs this version, a device still on an older version can no longer use the shared address book. It closes the address book with an error, so reads and writes throw. Updating it fixes this, and the data it already synced is kept. Update every device that shares the book.
+
+A removal made with an older version does not stop that device from adding itself back. After updating, and after removing a device, check `listWriters()` and call `removeWriter()` for any key you don't recognize. If your own device became read-only, call `create()` first.
+
 ## Example: running a blind peer
 
 Run one with the [`blind-peer`](https://github.com/holepunchto/blind-peer) package (or `blind-peer-cli` for a ready-made CLI). One node serves many users:
