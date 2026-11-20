@@ -678,9 +678,9 @@ test('removeMirror removes the key from the in-memory peering set, not just the 
     (await book.listMirrors()).some((m) => b4a.equals(m.key, mirrorKey)),
     'removeMirror removes the persisted record'
   )
-  // _updatePeering() unions book.mirrors with the persisted list on every call, so a
-  // key left behind here keeps getting re-added to the peering set even though the
-  // persisted record (checked above) says it was removed.
+  // _updatePeering() peers with book.mirrors whenever it is non-empty, so a key left
+  // behind here would stay in the peering set even though the persisted record
+  // (checked above) says it was removed.
   t.absent(
     book.mirrors.some((m) => b4a.equals(m, mirrorKey)),
     'removeMirror also drops the key from the in-memory peering set'
@@ -688,6 +688,54 @@ test('removeMirror removes the key from the in-memory peering set, not just the 
 
   await book.close()
 })
+
+test('peering uses only the device mirrors when add-mirror rows from the log name others', async function (t) {
+  const ownMirror = b4a.alloc(32, 0x11)
+  const book = await createBook(t, { mirrors: [ownMirror] })
+  await book.base.append(encode('@wdk-addressbook/add-mirror', { key: b4a.alloc(32, 0x22) }))
+  await book.base.append(encode('@wdk-addressbook/add-mirror', { key: b4a.alloc(32, 0x33) }))
+  const peering = attachDummyPeering(book)
+
+  await book.addContact({ name: 'Alice' })
+
+  t.alike(await peering.keys, [ownMirror], 'add-mirror rows from the log do not enter the peering set')
+})
+
+test('peering falls back to add-mirror rows from the log when the device has no mirrors', async function (t) {
+  const loggedMirror = b4a.alloc(32, 0x22)
+  const book = await createBook(t)
+  await book.base.append(encode('@wdk-addressbook/add-mirror', { key: loggedMirror }))
+  const peering = attachDummyPeering(book)
+
+  await book.addContact({ name: 'Alice' })
+
+  t.alike(await peering.keys, [loggedMirror], 'add-mirror rows from the log are the peering set')
+})
+
+class DummyPeering {
+  constructor () {
+    this.keys = new Promise((resolve) => { this._resolveKeys = resolve })
+  }
+
+  setKeys (keys) {
+    this._resolveKeys(keys)
+  }
+
+  addAutobaseBackground () {}
+
+  async close () {}
+}
+
+class DummySwarm {
+  async destroy () {}
+}
+
+function attachDummyPeering (book) {
+  const peering = new DummyPeering()
+  book.swarm = new DummySwarm()
+  book.peering = peering
+  return peering
+}
 
 let seedCounter = 0
 

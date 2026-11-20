@@ -136,7 +136,7 @@ class AddressBook extends ReadyResource {
       await context.base.removeWriter(data.key)
     })
 
-    /** Record a blind-peer mirror key (consumed by peering on update). */
+    /** Record a blind-peer mirror key (peered with only by devices that have no mirrors of their own). */
     this.router.add('@wdk-addressbook/add-mirror', async (data, context) => {
       await context.view.insert('@wdk-addressbook/mirrors', data)
     })
@@ -684,11 +684,8 @@ class AddressBook extends ReadyResource {
 
   async _updatePeering () {
     if (!this.swarm) return
-    const mirrorList = await this.listMirrors()
-    const mirrors = dedupeKeys([
-      ...this.mirrors,
-      ...mirrorList.map((item) => item.key)
-    ])
+    const logged = (await this.listMirrors()).map((item) => item.key)
+    const mirrors = dedupeKeys(this.mirrors.length > 0 ? this.mirrors : logged)
     if (this.peering) {
       this.peering.setKeys(mirrors)
     } else if (mirrors.length > 0) {
